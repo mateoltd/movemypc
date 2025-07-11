@@ -34,10 +34,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onNetworkError: (callback: (error: string) => void) => {
     ipcRenderer.on('network-error', (event, error) => callback(error));
   },
+  onPeerFound: (callback: (peer: any) => void) => {
+    ipcRenderer.on('peer-found', (event, peer) => callback(peer));
+  },
+  onPeerLost: (callback: (peer: any) => void) => {
+    ipcRenderer.on('peer-lost', (event, peer) => callback(peer));
+  },
   onFileCopyError: (callback: (error: any) => void) => {
     ipcRenderer.on('file-copy-error', (event, error) => callback(error));
   },
   transferFiles: (selectedItems: any) => ipcRenderer.invoke('transfer-files', selectedItems),
+  flushDiscovery: () => ipcRenderer.invoke('flush-discovery'),
 });
 
 export type ElectronHandler = typeof electronHandler;

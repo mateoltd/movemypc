@@ -3,60 +3,59 @@
  *        See https://github.com/webpack-contrib/sass-loader#imports
  */
 body {
-  position: relative;
-  color: white;
-  height: 100vh;
-  background: linear-gradient(
-    200.96deg,
-    #fedc2a -29.09%,
-    #dd5789 51.77%,
-    #7a2c9e 129.35%
-  );
-  font-family: sans-serif;
+  background-color: #1a1a1d;
+  color: #c5c6c7;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   overflow-y: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
+  height: 100vh;
   text-align: center;
 }
 
 .pc-selection {
   display: flex;
   justify-content: space-around;
-  width: 100%;
-  margin: 20px 0;
+  width: 80%;
+  margin: 40px 0;
 }
 
-.source-pc, .destination-pc {
-  border: 1px solid #fff;
-  padding: 20px;
-  border-radius: 10px;
-  width: 40%;
+.source-pc,
+.destination-pc {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 30px;
+  border-radius: 15px;
+  width: 45%;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
 
-.transfer-controls button {
-  background-color: white;
-  padding: 10px 20px;
-  border-radius: 10px;
+.transfer-controls button,
+button {
+  background-color: #6b2cfd;
+  color: white;
+  padding: 12px 25px;
+  border-radius: 8px;
   border: none;
-  appearance: none;
-  font-size: 1.3rem;
-  box-shadow: 0px 8px 28px -6px rgba(24, 39, 75, 0.12),
-    0px 18px 88px -4px rgba(24, 39, 75, 0.14);
-  transition: all ease-in 0.1s;
+  font-size: 1.1rem;
+  transition: all 0.2s ease-in-out;
   cursor: pointer;
-  opacity: 0.9;
   margin-top: 20px;
 }
 
-.transfer-controls button:hover {
-  transform: scale(1.05);
-  opacity: 1;
+.transfer-controls button:hover,
+button:hover {
+  background-color: #5a1fdA;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
 .transfer-status {
   margin-top: 20px;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
+  color: #9fa0a1;
 }
 
 .selectors {
@@ -67,10 +66,13 @@ body {
 }
 
 .selector {
-  border: 1px solid #fff;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 20px;
   border-radius: 10px;
   width: 30%;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
 
 .selector ul {
@@ -82,3 +84,74 @@ body {
   margin: 10px 0;
   text-align: left;
 }
+
+.discovery-animation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.scanner {
+  width: 80px;
+  height: 40px;
+  background:
+    linear-gradient(rgba(0, 255, 255, 0.5) 0 0) 0 0 / 100% 3px,
+    linear-gradient(rgba(0, 255, 255, 0.5) 0 0) 0 100% / 100% 3px;
+  background-repeat: no-repeat;
+  animation: s 2s infinite;
+  position: relative;
+}
+.scanner::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(to right, transparent, #6b2cfd, transparent) 0 0 / 100% 2px;
+  background-repeat: no-repeat;
+  animation: s-h 2s infinite;
+}
+
+@keyframes s {
+  0% { background-size: 0% 3px, 0% 3px; }
+  25% { background-size: 100% 3px, 0% 3px; }
+  50% { background-size: 100% 3px, 100% 3px; }
+  75%, 100% { background-size: 100% 3px, 100% 3px; }
+}
+
+@keyframes s-h {
+  0%, 50% { transform: translateY(-100%) }
+  100% { transform: translateY(calc(40px + 100%)); }
+}
+
+.peer-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.peer-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.peer-name {
+  font-size: 1rem;
+}
+
+.connect-btn {
+  padding: 5px 15px;
+  font-size: 0.9rem;
+  margin-top: 0;
+}
+
+.status-connected { color: #28a745; }
+.status-disconnected { color: #dc3545; }
+.status-error { color: #ffc107; }

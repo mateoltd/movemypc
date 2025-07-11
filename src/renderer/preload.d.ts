@@ -5,8 +5,11 @@ export interface ElectronAPI {
   connectToServer: (ipAddress: string) => Promise<void>;
   onConnectionStatus: (callback: (status: string) => void) => void;
   onNetworkError: (callback: (error: string) => void) => void;
+  onPeerFound: (callback: (peer: any) => void) => void;
+  onPeerLost: (callback: (peer: any) => void) => void;
   onFileCopyError: (callback: (error: any) => void) => void;
   transferFiles: (selectedItems: any) => Promise<void>;
+  flushDiscovery: () => Promise<void>;
 }
 
 declare global {

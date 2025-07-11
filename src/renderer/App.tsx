@@ -12,15 +12,17 @@ interface SelectedItems {
 
 export default function App() {
   const [analysis, setAnalysis] = useState<any>(null);
-  const [ipAddress, setIpAddress] = useState('');
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [selectedItems, setSelectedItems] = useState<SelectedItems>({
     files: [],
     apps: [],
     configurations: [],
   });
+  const [peers, setPeers] = useState<any[]>([]);
+  const [timeoutExpired,setTimeoutExpired]=useState(false);
 
   useEffect(() => {
+    const timer=setTimeout(()=>setTimeoutExpired(true),10000);
     window.electronAPI.onConnectionStatus((status: string) => {
       setConnectionStatus(status);
     });
@@ -32,6 +34,15 @@ export default function App() {
     window.electronAPI.onNetworkError((error: string) => {
       alert(`Network error:\n${error}`);
     });
+
+    window.electronAPI.onPeerFound((peer: any) => {
+      setPeers(prev => [...prev, peer]);
+    });
+
+    window.electronAPI.onPeerLost((peer: any) => {
+      setPeers(prev => prev.filter(p => p.name !== peer.name));
+    });
+    return ()=>clearTimeout(timer);
   }, []);
 
   const handleAnalyze = async () => {
@@ -39,7 +50,7 @@ export default function App() {
     setAnalysis(result);
   };
 
-  const handleConnect = () => {
+  const handleConnect = (ipAddress: string) => {
     window.electronAPI.connectToServer(ipAddress);
   };
 
@@ -60,24 +71,40 @@ export default function App() {
   };
 
   return (
-    <div>
+    <div className="App">
       <h1>MoveMyPC</h1>
       <div className="pc-selection">
         <div className="source-pc">
           <h2>Source PC</h2>
-          <p>Status: <span>Connected</span></p>
+          <p>Status: <span className={`status-${connectionStatus}`}>{connectionStatus}</span></p>
           <button type="button" onClick={handleAnalyze}>Analyze System</button>
         </div>
         <div className="destination-pc">
-          <h2>Destination PC</h2>
-          <p>Status: <span>{connectionStatus}</span></p>
-          <input
-            type="text"
-            placeholder="Enter IP Address"
-            value={ipAddress}
-            onChange={(e) => setIpAddress(e.target.value)}
-          />
-          <button type="button" onClick={handleConnect}>Connect</button>
+          <h2>Discovered PCs</h2>
+          {peers.length === 0 ? (
+            timeoutExpired ? (
+              <div className="discovery-animation">
+                <p>No devices found.</p>
+                <button onClick={()=>{setTimeoutExpired(false);window.electronAPI.flushDiscovery();}}>
+                  Retry
+                </button>
+              </div>
+            ) : (
+              <div className="discovery-animation">
+                <div className="scanner"></div>
+                <p>Searching for devices...</p>
+              </div>
+            )
+          ) : (
+            <ul className="peer-list">
+              {peers.map(peer => (
+                <li key={peer.name}>
+                  <span className="peer-name">{peer.name} ({peer.host})</span>
+                  <button className="connect-btn" type="button" onClick={() => handleConnect(peer.host)}>Connect</button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 

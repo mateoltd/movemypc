@@ -16,6 +16,7 @@ import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 import { analyzeSystem } from './system-analysis';
 import { startServer, connectToServer, sendData } from './network';
+import discoveryService from './discovery';
 import * as fs from 'fs-extra';
 import { homedir } from 'os';
 import { join } from 'path';
@@ -49,6 +50,10 @@ ipcMain.handle('connect-to-server', async (event, ipAddress: string) => {
 
 ipcMain.handle('transfer-files', async (event, selectedItems: any) => {
   sendData({ type: 'file-transfer-request', payload: selectedItems });
+});
+
+ipcMain.handle('flush-discovery', () => {
+  if (mainWindow) discoveryService.flush(mainWindow);
 });
 
 ipcMain.on('file-transfer-request', (event, payload) => {
@@ -154,8 +159,8 @@ const createWindow = async () => {
  */
 
 app.on('window-all-closed', () => {
-  // Respect the OSX convention of having the application in memory even
-  // after all windows have been closed
+  discoveryService.stopBroadcasting();
+  // Respect the user's preference of not quitting automatically
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -172,6 +177,8 @@ app
     });
     if (mainWindow) {
       startServer(mainWindow);
+      discoveryService.startBroadcasting();
+      discoveryService.flush(mainWindow);
     }
   })
   .catch(console.log);
