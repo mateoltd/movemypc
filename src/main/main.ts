@@ -18,7 +18,7 @@ import { analyzeSystem } from './system-analysis';
 import { startServer, connectToServer, sendData } from './network';
 import discoveryService from './discovery';
 import * as fs from 'fs-extra';
-import { homedir } from 'os';
+import { homedir, hostname, networkInterfaces } from 'os';
 import { join } from 'path';
 
 class AppUpdater {
@@ -35,6 +35,26 @@ ipcMain.on('ipc-example', async (event, arg) => {
   const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
   console.log(msgTemplate(arg));
   event.reply('ipc-example', msgTemplate('pong'));
+});
+
+function getLocalIpAddress() {
+  const nets = networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]!) {
+      // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+      if (net.family === 'IPv4' && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+  return '127.0.0.1'; // fallback
+}
+
+ipcMain.handle('get-local-device-info', async () => {
+  return {
+    hostname: hostname(),
+    ipAddress: getLocalIpAddress(),
+  };
 });
 
 ipcMain.handle('analyze-system', async () => {

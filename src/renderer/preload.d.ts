@@ -10,6 +10,7 @@ export interface ElectronAPI {
   onFileCopyError: (callback: (error: any) => void) => void;
   transferFiles: (selectedItems: any) => Promise<void>;
   flushDiscovery: () => Promise<void>;
+  getLocalDeviceInfo: () => Promise<{ hostname: string; ipAddress: string; }>;
 }
 
 declare global {

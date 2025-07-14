@@ -26,6 +26,7 @@ const electronHandler = {
 
 contextBridge.exposeInMainWorld('electron', electronHandler);
 contextBridge.exposeInMainWorld('electronAPI', {
+  getLocalDeviceInfo: () => ipcRenderer.invoke('get-local-device-info'),
   analyzeSystem: () => ipcRenderer.invoke('analyze-system'),
   connectToServer: (ipAddress: string) => ipcRenderer.invoke('connect-to-server', ipAddress),
   onConnectionStatus: (callback: (status: string) => void) => {
