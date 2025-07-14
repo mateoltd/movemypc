@@ -125,6 +125,11 @@ const createWindow = async () => {
 
   mainWindow.loadURL(resolveHtmlPath('index.html'));
 
+  // Ensure discovery events are sent only after the renderer is ready to receive them
+  mainWindow.webContents.once('did-finish-load', () => {
+    discoveryService.flush(mainWindow!);
+  });
+
   mainWindow.on('ready-to-show', () => {
     if (!mainWindow) {
       throw new Error('"mainWindow" is not defined');
@@ -178,7 +183,6 @@ app
     if (mainWindow) {
       startServer(mainWindow);
       discoveryService.startBroadcasting();
-      discoveryService.flush(mainWindow);
     }
   })
   .catch(console.log);

@@ -53,12 +53,18 @@ class Discovery {
   }
 
   private send(evt: QueuedEvent, win: BrowserWindow) {
+    const hostField = Array.isArray(evt.svc.addresses) && evt.svc.addresses.length
+      ? evt.svc.addresses[0]
+      : evt.svc.host;
+
     const payload = {
       name: evt.svc.name,
-      host: evt.svc.host,
+      host: hostField,
       port: evt.svc.port,
     };
-    win.webContents.send(`peer-${evt.kind}`, payload);
+    // Renderer expects 'peer-found' for service appearing and 'peer-lost' for disappearance
+    const channel = evt.kind === 'up' ? 'peer-found' : 'peer-lost';
+    win.webContents.send(channel, payload);
   }
 }
 
