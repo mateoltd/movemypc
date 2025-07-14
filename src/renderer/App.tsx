@@ -154,116 +154,105 @@ export default function App() {
       </header>
 
       <main className="main-content">
-        <div className="connection-layout">
-          {/* Source PC Card */}
-          <div className={`pc-card ${connectionStatus === 'connected' ? 'connected' : ''}`}>
-            <div className="pc-card-content">
-              <div className="computer-icon">
-                <ComputerIcon />
-              </div>
-              <h2 className="pc-card-title">{localDeviceInfo?.hostname ?? 'Source PC'}</h2>
-              <p className="pc-card-subtitle">{localDeviceInfo?.ipAddress ?? '127.0.0.1'}</p>
-              <span className={`pc-card-status ${connectionStatus}`}>
-                {getStatusText()}
-              </span>
-            </div>
-          </div>
-
-          {/* Connection Line */}
-          <div className="connection-line">
-            <svg viewBox="0 0 300 2">
-              <line 
-                x1="0" 
-                y1="1" 
-                x2="300" 
-                y2="1" 
-                className={`connection-line-path ${isTransferring ? 'active' : ''}`}
-              />
-            </svg>
-          </div>
-
-          {/* Destination PC Card */}
-          <div className={`pc-card ${connectionStatus === 'connected' ? 'connected' : ''}`}>
-            <div className="pc-card-content">
-              <div className="computer-icon">
-                <ComputerIcon />
-              </div>
-              <h2 className="pc-card-title">{getDestinationText()}</h2>
-              <p className="pc-card-subtitle">
-                {connectedPeer ? connectedPeer.host : '...'}
-              </p>
-              <span className={`pc-card-status ${connectionStatus}`}>
-                {getStatusText()}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Discovered PCs Panel */}
-        <div className="discovered-panel">
-          <h3 className="discovered-panel-title">Discovered PCs</h3>
-          {peers.length === 0 ? (
-            timeoutExpired ? (
-              <>
-                <div className="discovery-animation">
-                  <p className="discovery-text">No devices found.</p>
-                  <button className="btn btn-secondary" onClick={handleRetryDiscovery} style={{ marginTop: '16px' }}>
-                    Retry
-                  </button>
+        <div className="app-container">
+          <div className="connection-layout">
+            {/* Source PC Card */}
+            <div className={`pc-card ${connectionStatus === 'connected' ? 'connected' : ''}`}>
+              <div className="pc-card-content">
+                <div className="computer-icon">
+                  <ComputerIcon />
                 </div>
-                <DiscoveryInstructions />
-              </>
-            ) : (
-              <div className="discovery-animation">
-                <div className="scanner"></div>
-                <p className="discovery-text">Searching for devices...</p>
-                <DiscoveryInstructions />
+                <h2 className="pc-card-title">{localDeviceInfo?.hostname ?? 'Source PC'}</h2>
+                <p className="pc-card-subtitle">{localDeviceInfo?.ipAddress ?? '127.0.0.1'}</p>
+                <span className={`pc-card-status ${connectionStatus}`}>
+                  {getStatusText()}
+                </span>
               </div>
-            )
-          ) : (
-            <ul className="peer-list">
-              {peers.map(peer => (
-                <li key={`${peer.name}-${peer.host}`} className="peer-item">
-                  <div className="peer-info">
-                    <div className="peer-name">{peer.name}</div>
-                    <div className="peer-address">{peer.host}</div>
+              {/* Analyze Button moved to Source PC */}
+              <div className="pc-card-actions">
+                <button className="btn btn-secondary analyze-btn" onClick={handleAnalyze}>
+                  Analyze System
+                </button>
+              </div>
+            </div>
+
+            {/* Discovered PCs Panel */}
+            <div className="discovered-panel">
+              <h3 className="discovered-panel-title">Discovered PCs</h3>
+              {peers.length === 0 ? (
+                timeoutExpired ? (
+                  <>
+                    <div className="discovery-animation">
+                      <p className="discovery-text">No devices found.</p>
+                      <button className="btn btn-secondary" onClick={handleRetryDiscovery} style={{ marginTop: '16px' }}>
+                        Retry
+                      </button>
+                    </div>
+                    <DiscoveryInstructions />
+                  </>
+                ) : (
+                  <div className="discovery-animation">
+                    <div className="scanner"></div>
+                    <p className="discovery-text">Searching for devices...</p>
+                    <DiscoveryInstructions />
                   </div>
-                  <button 
-                    className="connect-btn" 
-                    onClick={() => handleConnect(peer)}
-                    disabled={connectionStatus === 'connected'}
-                  >
-                    {connectedPeer?.host === peer.host && connectionStatus === 'connected' 
-                      ? 'Connected' 
-                      : 'Connect'
-                    }
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                )
+              ) : (
+                <ul className="peer-list">
+                  {peers.map(peer => (
+                    <li key={`${peer.name}-${peer.host}`} className="peer-item">
+                      <div className="peer-info">
+                        <div className="peer-name">{peer.name}</div>
+                        <div className="peer-address">{peer.host}</div>
+                      </div>
+                      <button 
+                        className="connect-btn" 
+                        onClick={() => handleConnect(peer)}
+                        disabled={connectionStatus === 'connected'}
+                      >
+                        {connectedPeer?.host === peer.host && connectionStatus === 'connected' 
+                          ? 'Connected' 
+                          : 'Connect'
+                        }
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
-        {/* Analyze Button */}
-        <button className="btn btn-secondary analyze-btn" onClick={handleAnalyze}>
-          Analyze System
-        </button>
-
-        {/* Transfer Controls */}
-        <div className="transfer-controls">
-          <button 
-            className="btn transfer-btn" 
-            onClick={handleTransfer}
-            disabled={connectionStatus !== 'connected' || !analysis || isTransferring}
-          >
-            {isTransferring ? 'Transferring...' : 'Initiate Transfer'}
-          </button>
-          <p className="transfer-status">
-            {connectionStatus === 'connected' 
-              ? (analysis ? 'Ready to transfer' : 'Run system analysis first')
-              : 'Waiting for connection...'
-            }
-          </p>
+            {/* Destination PC Card */}
+            <div className={`pc-card ${connectionStatus === 'connected' ? 'connected' : ''}`}>
+              <div className="pc-card-content">
+                <div className="computer-icon">
+                  <ComputerIcon />
+                </div>
+                <h2 className="pc-card-title">{getDestinationText()}</h2>
+                <p className="pc-card-subtitle">
+                  {connectedPeer ? connectedPeer.host : '...'}
+                </p>
+                <span className={`pc-card-status ${connectionStatus}`}>
+                  {getStatusText()}
+                </span>
+              </div>
+              {/* Transfer Button moved to Destination PC */}
+              <div className="pc-card-actions">
+                <button 
+                  className="btn transfer-btn" 
+                  onClick={handleTransfer}
+                  disabled={connectionStatus !== 'connected' || !analysis || isTransferring}
+                >
+                  {isTransferring ? 'Transferring...' : 'Initiate Transfer'}
+                </button>
+                <p className="transfer-status">
+                  {connectionStatus === 'connected' 
+                    ? (analysis ? 'Ready to transfer' : 'Run system analysis first')
+                    : 'Waiting for connection...'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
 

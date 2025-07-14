@@ -71,18 +71,23 @@ body::after {
   padding: var(--spacing-xxl);
 }
 
-.connection-layout {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.app-container {
   width: 100%;
   max-width: 1200px;
+  margin: 0 auto;
+}
+
+.connection-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--spacing-xl);
+  align-items: start;
   position: relative;
 }
 
 .pc-card {
-  width: 300px;
-  height: 340px;
+  width: 100%;
+  min-height: 400px;
   background: var(--color-surface-primary);
   border: 1px solid var(--color-surface-secondary);
   border-radius: var(--border-radius-lg);
@@ -90,7 +95,7 @@ body::after {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   position: relative;
   transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
   box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.5), inset 0px 0px 15px rgba(0, 0, 0, 0.2);
@@ -126,6 +131,7 @@ body::after {
   align-items: center;
   justify-content: center;
   text-align: center;
+  flex: 1;
 }
 
 .computer-icon {
@@ -180,41 +186,58 @@ body::after {
   color: var(--color-status-error);
 }
 
-.connection-line {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 300px;
-  height: 2px;
-  z-index: 1;
-}
-
-.connection-line svg {
+.pc-card-actions {
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
   width: 100%;
-  height: 100%;
 }
 
-.connection-line-path {
-  stroke: var(--color-text-secondary);
-  stroke-width: 2;
-  stroke-dasharray: 10, 5;
-  fill: none;
-  opacity: 0.6;
+.pc-card-actions .analyze-btn,
+.pc-card-actions .transfer-btn {
+  width: 100%;
+  max-width: 200px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-body);
+  font-weight: 300;
+  border-radius: var(--border-radius-sm);
+  transition: all 0.3s ease;
 }
 
-.connection-line-path.active {
-  stroke: var(--color-accent-primary);
-  opacity: 1;
-  animation: flow 2s linear infinite;
+.pc-card-actions .transfer-btn {
+  background: var(--color-accent-primary);
+  color: var(--color-text-primary);
+  border: none;
+  cursor: pointer;
+}
+
+.pc-card-actions .transfer-btn:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.pc-card-actions .transfer-btn:disabled {
+  background: var(--color-surface-primary);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.transfer-status {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin-top: var(--spacing-xs);
 }
 
 .discovered-panel {
-  position: absolute;
-  top: calc(var(--spacing-lg) * -1);
-  left: 50%;
-  transform: translateX(-50%);
-  width: 450px;
+  position: relative;
+  width: 100%;
   background: rgba(30, 30, 33, 0.7);
   backdrop-filter: blur(12px) saturate(150%);
   -webkit-backdrop-filter: blur(12px) saturate(150%);
@@ -316,56 +339,6 @@ body::after {
   font-size: var(--font-size-label);
   color: var(--color-text-secondary);
   text-align: center;
-}
-
-.transfer-controls {
-  position: absolute;
-  bottom: var(--spacing-xl);
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.transfer-btn {
-  padding: var(--spacing-md) var(--spacing-xl);
-  font-size: var(--font-size-body);
-  font-weight: 300;
-  background: var(--color-accent-primary);
-  color: var(--color-text-primary);
-  border: none;
-  border-radius: var(--border-radius-sm);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 200px;
-}
-
-.transfer-btn:hover:not(:disabled) {
-  background: var(--color-accent-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-hover);
-}
-
-.transfer-btn:disabled {
-  background: var(--color-surface-primary);
-  color: var(--color-text-secondary);
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.transfer-status {
-  font-size: var(--font-size-caption);
-  color: var(--color-text-secondary);
-  text-align: center;
-}
-
-.analyze-btn {
-  position: absolute;
-  bottom: var(--spacing-md);
-  left: var(--spacing-md);
 }
 
 .discovery-instructions {
