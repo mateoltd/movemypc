@@ -1,5 +1,5 @@
 import React from 'react';
-import ComputerIcon from './ComputerIcon';
+import ComputerIcon from '../Icons/ComputerIcon';
 
 interface Peer {
   name: string;
@@ -13,7 +13,11 @@ interface DeviceCardProps {
   onSelect: (peer: Peer) => void;
 }
 
-const DeviceCard: React.FC<DeviceCardProps> = ({ peer, isSelected, onSelect }) => {
+const DeviceCard: React.FC<DeviceCardProps> = ({
+  peer,
+  isSelected,
+  onSelect,
+}) => {
   return (
     <div
       className={`device-card ${isSelected ? 'selected' : ''}`}
@@ -30,4 +34,4 @@ const DeviceCard: React.FC<DeviceCardProps> = ({ peer, isSelected, onSelect }) =
   );
 };
 
-export default DeviceCard; 
+export default DeviceCard;

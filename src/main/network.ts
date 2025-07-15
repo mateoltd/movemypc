@@ -67,8 +67,8 @@ export const sendData = (data: any) => {
   if (client && client.writable) {
     client.write(jsonData);
   } else {
-    sockets.forEach(socket => {
+    sockets.forEach((socket) => {
       socket.write(jsonData);
     });
   }
-}; 
+};

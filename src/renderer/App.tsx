@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
+import Interface from './components/Home/Interface';
 import './App.css';
-import ItemSelector from './components/ItemSelector';
-import Interface from './components/Interface';
 
 interface SelectedItems {
   files: string[];
@@ -20,7 +19,12 @@ interface LocalDeviceInfo {
   ipAddress: string;
 }
 
-
+interface AnalysisProgress {
+  phase: 'files' | 'apps' | 'configurations';
+  current: number;
+  total: number;
+  currentPath?: string;
+}
 
 export default function App() {
   const [analysis, setAnalysis] = useState<any>(null);
@@ -34,12 +38,16 @@ export default function App() {
   const [timeoutExpired, setTimeoutExpired] = useState(false);
   const [connectedPeer, setConnectedPeer] = useState<Peer | null>(null);
   const [isTransferring, setIsTransferring] = useState(false);
-  const [localDeviceInfo, setLocalDeviceInfo] = useState<LocalDeviceInfo | null>(null);
+  const [localDeviceInfo, setLocalDeviceInfo] =
+    useState<LocalDeviceInfo | null>(null);
+  const [showFileSelection, setShowFileSelection] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setTimeoutExpired(true), 10000);
-    
-    window.electronAPI.getLocalDeviceInfo().then(info => {
+
+    window.electronAPI.getLocalDeviceInfo().then((info) => {
       setLocalDeviceInfo(info);
     });
 
@@ -61,8 +69,10 @@ export default function App() {
     });
 
     window.electronAPI.onPeerFound((peer: Peer) => {
-      setPeers(prev => {
-        const exists = prev.find(p => p.name === peer.name && p.host === peer.host);
+      setPeers((prev) => {
+        const exists = prev.find(
+          (p) => p.name === peer.name && p.host === peer.host,
+        );
         if (!exists) {
           return [...prev, peer];
         }
@@ -71,15 +81,42 @@ export default function App() {
     });
 
     window.electronAPI.onPeerLost((peer: Peer) => {
-      setPeers(prev => prev.filter(p => p.name !== peer.name || p.host !== peer.host));
+      setPeers((prev) =>
+        prev.filter((p) => p.name !== peer.name || p.host !== peer.host),
+      );
+    });
+
+    // Analysis event handlers
+    window.electronAPI.onAnalysisProgress((progress: AnalysisProgress) => {
+      setAnalysisProgress(progress);
+    });
+
+    window.electronAPI.onAnalysisComplete((analysisResult: any) => {
+      setAnalysis(analysisResult);
+      setIsAnalyzing(false);
+      setAnalysisProgress(null);
+    });
+
+    window.electronAPI.onAnalysisError((error: string) => {
+      alert(`Analysis error: ${error}`);
+      setIsAnalyzing(false);
+      setAnalysisProgress(null);
     });
 
     return () => clearTimeout(timer);
   }, []);
 
   const handleAnalyze = async () => {
-    const result = await window.electronAPI.analyzeSystem();
-    setAnalysis(result);
+    setIsAnalyzing(true);
+    setAnalysisProgress(null);
+    try {
+      await window.electronAPI.analyzeSystem();
+      // Analysis result will be handled by the onAnalysisComplete event
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      setIsAnalyzing(false);
+      setAnalysisProgress(null);
+    }
   };
 
   const handleConnect = (peer: Peer) => {
@@ -87,8 +124,12 @@ export default function App() {
     window.electronAPI.connectToServer(peer.host);
   };
 
-  const handleSelectionChange = (type: keyof SelectedItems, id: string, checked: boolean) => {
-    setSelectedItems(prev => {
+  const handleSelectionChange = (
+    type: keyof SelectedItems,
+    id: string,
+    checked: boolean,
+  ) => {
+    setSelectedItems((prev) => {
       const newSelection = new Set(prev[type]);
       if (checked) {
         newSelection.add(id);
@@ -99,10 +140,21 @@ export default function App() {
     });
   };
 
+  const handleOpenFileSelection = () => {
+    if (analysis) {
+      setShowFileSelection(true);
+    }
+  };
+
+  const handleCloseFileSelection = () => {
+    setShowFileSelection(false);
+  };
+
   const handleTransfer = () => {
     if (connectionStatus === 'connected' && analysis) {
       setIsTransferring(true);
       window.electronAPI.transferFiles(selectedItems);
+      setShowFileSelection(false);
     }
   };
 
@@ -139,34 +191,19 @@ export default function App() {
             timeoutExpired={timeoutExpired}
             onAnalyze={handleAnalyze}
             onConnect={handleConnect}
-            onTransfer={handleTransfer}
+            onTransfer={handleOpenFileSelection}
             onRetryDiscovery={handleRetryDiscovery}
             analysis={analysis}
             isTransferring={isTransferring}
+            analysisProgress={analysisProgress}
+            isAnalyzing={isAnalyzing}
+            selectedItems={selectedItems}
+            onSelectionChange={handleSelectionChange}
+            onCloseFileSelection={handleCloseFileSelection}
+            showFileSelection={showFileSelection}
           />
         </div>
       </main>
-
-      {/* File Selectors - Hidden for now, can be shown in a modal */}
-      {analysis && (
-        <div style={{ display: 'none' }}>
-          <ItemSelector 
-            title="Files"
-            items={analysis.files} 
-            onSelectionChange={(id: string, checked: boolean) => handleSelectionChange('files', id, checked)} 
-          />
-          <ItemSelector 
-            title="Applications"
-            items={analysis.apps} 
-            onSelectionChange={(id: string, checked: boolean) => handleSelectionChange('apps', id, checked)} 
-          />
-          <ItemSelector 
-            title="Configurations"
-            items={analysis.configurations} 
-            onSelectionChange={(id: string, checked: boolean) => handleSelectionChange('configurations', id, checked)} 
-          />
-        </div>
-      )}
     </div>
   );
 }

@@ -9,9 +9,13 @@ interface QueuedEvent {
 
 class Discovery {
   private bonjour: any;
+
   private browser: any;
+
   private service: any;
+
   private queue: QueuedEvent[] = [];
+
   private rendererReady = false;
 
   constructor() {
@@ -53,9 +57,10 @@ class Discovery {
   }
 
   private send(evt: QueuedEvent, win: BrowserWindow) {
-    const hostField = Array.isArray(evt.svc.addresses) && evt.svc.addresses.length
-      ? evt.svc.addresses[0]
-      : evt.svc.host;
+    const hostField =
+      Array.isArray(evt.svc.addresses) && evt.svc.addresses.length
+        ? evt.svc.addresses[0]
+        : evt.svc.host;
 
     const payload = {
       name: evt.svc.name,

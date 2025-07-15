@@ -8,9 +8,12 @@ export interface ElectronAPI {
   onPeerFound: (callback: (peer: any) => void) => void;
   onPeerLost: (callback: (peer: any) => void) => void;
   onFileCopyError: (callback: (error: any) => void) => void;
+  onAnalysisProgress: (callback: (progress: any) => void) => void;
+  onAnalysisComplete: (callback: (analysis: any) => void) => void;
+  onAnalysisError: (callback: (error: string) => void) => void;
   transferFiles: (selectedItems: any) => Promise<void>;
   flushDiscovery: () => Promise<void>;
-  getLocalDeviceInfo: () => Promise<{ hostname: string; ipAddress: string; }>;
+  getLocalDeviceInfo: () => Promise<{ hostname: string; ipAddress: string }>;
 }
 
 declare global {

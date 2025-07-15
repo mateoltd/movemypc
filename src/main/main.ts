@@ -12,14 +12,14 @@ import path from 'path';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
-import MenuBuilder from './menu';
-import { resolveHtmlPath } from './util';
-import { analyzeSystem } from './system-analysis';
-import { startServer, connectToServer, sendData } from './network';
-import discoveryService from './discovery';
 import * as fs from 'fs-extra';
 import { homedir, hostname, networkInterfaces } from 'os';
 import { join } from 'path';
+import MenuBuilder from './menu';
+import { resolveHtmlPath } from './util';
+import { analyzeSystem, setProgressCallback } from './system-analysis';
+import { startServer, connectToServer, sendData } from './network';
+import discoveryService from './discovery';
 
 class AppUpdater {
   constructor() {
@@ -57,9 +57,21 @@ ipcMain.handle('get-local-device-info', async () => {
   };
 });
 
-ipcMain.handle('analyze-system', async () => {
-  const analysis = await analyzeSystem();
-  return analysis;
+ipcMain.handle('analyze-system', async (event) => {
+  // Set up progress callback to send updates to renderer
+  setProgressCallback((progress) => {
+    event.sender.send('analysis-progress', progress);
+  });
+  
+  try {
+    const analysis = await analyzeSystem();
+    event.sender.send('analysis-complete', analysis);
+    return analysis;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    event.sender.send('analysis-error', errorMessage);
+    throw error;
+  }
 });
 
 ipcMain.handle('connect-to-server', async (event, ipAddress: string) => {
@@ -82,13 +94,16 @@ ipcMain.on('file-transfer-request', (event, payload) => {
 
   const { files, apps, configurations } = payload;
 
-  files.forEach((file: { id: string, name: string, path: string }) => {
+  files.forEach((file: { id: string; name: string; path: string }) => {
     const destPath = join(transferDir, file.name);
     fs.copy(file.path, destPath)
       .then(() => console.log(`Copied ${file.path} to ${destPath}`))
       .catch((err: Error) => {
         console.error(`Error copying ${file.path}:`, err);
-        mainWindow?.webContents.send('file-copy-error', { fileName: file.name, error: err.message });
+        mainWindow?.webContents.send('file-copy-error', {
+          fileName: file.name,
+          error: err.message,
+        });
       });
   });
 });

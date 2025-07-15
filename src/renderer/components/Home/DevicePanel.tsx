@@ -1,5 +1,5 @@
 import React from 'react';
-import ComputerIcon from './ComputerIcon';
+import ComputerIcon from '../Icons/ComputerIcon';
 
 interface DevicePanelProps {
   title: string;
@@ -16,7 +16,7 @@ const DevicePanel: React.FC<DevicePanelProps> = ({
   status,
   isConnected = false,
   actions,
-  type
+  type,
 }) => {
   const getStatusText = () => {
     if (status === 'connected') return 'Connected';
@@ -25,7 +25,9 @@ const DevicePanel: React.FC<DevicePanelProps> = ({
   };
 
   return (
-    <div className={`interface-panel interface-${type} ${isConnected ? 'connected' : ''}`}>
+    <div
+      className={`interface-panel interface-${type} ${isConnected ? 'connected' : ''}`}
+    >
       <div className="interface-panel-content">
         <div className="computer-icon">
           <ComputerIcon />
@@ -36,13 +38,9 @@ const DevicePanel: React.FC<DevicePanelProps> = ({
           {getStatusText()}
         </span>
       </div>
-      {actions && (
-        <div className="interface-panel-actions">
-          {actions}
-        </div>
-      )}
+      {actions && <div className="interface-panel-actions">{actions}</div>}
     </div>
   );
 };
 
-export default DevicePanel; 
+export default DevicePanel;

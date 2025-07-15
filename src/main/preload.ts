@@ -28,7 +28,8 @@ contextBridge.exposeInMainWorld('electron', electronHandler);
 contextBridge.exposeInMainWorld('electronAPI', {
   getLocalDeviceInfo: () => ipcRenderer.invoke('get-local-device-info'),
   analyzeSystem: () => ipcRenderer.invoke('analyze-system'),
-  connectToServer: (ipAddress: string) => ipcRenderer.invoke('connect-to-server', ipAddress),
+  connectToServer: (ipAddress: string) =>
+    ipcRenderer.invoke('connect-to-server', ipAddress),
   onConnectionStatus: (callback: (status: string) => void) => {
     ipcRenderer.on('connection-status', (event, status) => callback(status));
   },
@@ -44,7 +45,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onFileCopyError: (callback: (error: any) => void) => {
     ipcRenderer.on('file-copy-error', (event, error) => callback(error));
   },
-  transferFiles: (selectedItems: any) => ipcRenderer.invoke('transfer-files', selectedItems),
+  onAnalysisProgress: (callback: (progress: any) => void) => {
+    ipcRenderer.on('analysis-progress', (event, progress) => callback(progress));
+  },
+  onAnalysisComplete: (callback: (analysis: any) => void) => {
+    ipcRenderer.on('analysis-complete', (event, analysis) => callback(analysis));
+  },
+  onAnalysisError: (callback: (error: string) => void) => {
+    ipcRenderer.on('analysis-error', (event, error) => callback(error));
+  },
+  transferFiles: (selectedItems: any) =>
+    ipcRenderer.invoke('transfer-files', selectedItems),
   flushDiscovery: () => ipcRenderer.invoke('flush-discovery'),
 });
 
