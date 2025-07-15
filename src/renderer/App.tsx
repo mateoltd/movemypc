@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import './App.css';
-import FileSelector from './components/FileSelector';
-import AppSelector from './components/AppSelector';
-import ConfigSelector from './components/ConfigSelector';
+import ItemSelector from './components/ItemSelector';
+import Interface from './components/Interface';
 
 interface SelectedItems {
   files: string[];
@@ -21,30 +20,7 @@ interface LocalDeviceInfo {
   ipAddress: string;
 }
 
-// Computer Icon SVG Component
-const ComputerIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor">
-    <path d="M20 3H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h3l-1 1v2h12v-2l-1-1h3c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 13H4V5h16v11z"/>
-    <path d="M14 19.5V21a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-1.5a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 .5.5Z"/>
-    <path d="M14 2.5V4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2.5a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 .5.5Z"/>
-  </svg>
-);
 
-const DiscoveryInstructions = () => (
-  <div className="discovery-instructions">
-    <div className="discovery-icon">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-      </svg>
-    </div>
-    <h4 className="discovery-instructions-title">Ready to Connect?</h4>
-    <p className="discovery-instructions-text">Ensure the other PC is ready for discovery:</p>
-    <ul className="discovery-instructions-list">
-      <li>The MoveMyPC app is running.</li>
-      <li>Both PCs are on the same Wi-Fi or Ethernet network.</li>
-    </ul>
-  </div>
-);
 
 export default function App() {
   const [analysis, setAnalysis] = useState<any>(null);
@@ -155,121 +131,39 @@ export default function App() {
 
       <main className="main-content">
         <div className="app-container">
-          <div className="connection-layout">
-            {/* Source PC Card */}
-            <div className={`pc-card ${connectionStatus === 'connected' ? 'connected' : ''}`}>
-              <div className="pc-card-content">
-                <div className="computer-icon">
-                  <ComputerIcon />
-                </div>
-                <h2 className="pc-card-title">{localDeviceInfo?.hostname ?? 'Source PC'}</h2>
-                <p className="pc-card-subtitle">{localDeviceInfo?.ipAddress ?? '127.0.0.1'}</p>
-                <span className={`pc-card-status ${connectionStatus}`}>
-                  {getStatusText()}
-                </span>
-              </div>
-              {/* Analyze Button moved to Source PC */}
-              <div className="pc-card-actions">
-                <button className="btn btn-secondary analyze-btn" onClick={handleAnalyze}>
-                  Analyze System
-                </button>
-              </div>
-            </div>
-
-            {/* Discovered PCs Panel */}
-            <div className="discovered-panel">
-              <h3 className="discovered-panel-title">Discovered PCs</h3>
-              {peers.length === 0 ? (
-                timeoutExpired ? (
-                  <>
-                    <div className="discovery-animation">
-                      <p className="discovery-text">No devices found.</p>
-                      <button className="btn btn-secondary" onClick={handleRetryDiscovery} style={{ marginTop: '16px' }}>
-                        Retry
-                      </button>
-                    </div>
-                    <DiscoveryInstructions />
-                  </>
-                ) : (
-                  <div className="discovery-animation">
-                    <div className="scanner"></div>
-                    <p className="discovery-text">Searching for devices...</p>
-                    <DiscoveryInstructions />
-                  </div>
-                )
-              ) : (
-                <ul className="peer-list">
-                  {peers.map(peer => (
-                    <li key={`${peer.name}-${peer.host}`} className="peer-item">
-                      <div className="peer-info">
-                        <div className="peer-name">{peer.name}</div>
-                        <div className="peer-address">{peer.host}</div>
-                      </div>
-                      <button 
-                        className="connect-btn" 
-                        onClick={() => handleConnect(peer)}
-                        disabled={connectionStatus === 'connected'}
-                      >
-                        {connectedPeer?.host === peer.host && connectionStatus === 'connected' 
-                          ? 'Connected' 
-                          : 'Connect'
-                        }
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {/* Destination PC Card */}
-            <div className={`pc-card ${connectionStatus === 'connected' ? 'connected' : ''}`}>
-              <div className="pc-card-content">
-                <div className="computer-icon">
-                  <ComputerIcon />
-                </div>
-                <h2 className="pc-card-title">{getDestinationText()}</h2>
-                <p className="pc-card-subtitle">
-                  {connectedPeer ? connectedPeer.host : '...'}
-                </p>
-                <span className={`pc-card-status ${connectionStatus}`}>
-                  {getStatusText()}
-                </span>
-              </div>
-              {/* Transfer Button moved to Destination PC */}
-              <div className="pc-card-actions">
-                <button 
-                  className="btn transfer-btn" 
-                  onClick={handleTransfer}
-                  disabled={connectionStatus !== 'connected' || !analysis || isTransferring}
-                >
-                  {isTransferring ? 'Transferring...' : 'Initiate Transfer'}
-                </button>
-                <p className="transfer-status">
-                  {connectionStatus === 'connected' 
-                    ? (analysis ? 'Ready to transfer' : 'Run system analysis first')
-                    : 'Waiting for connection...'
-                  }
-                </p>
-              </div>
-            </div>
-          </div>
+          <Interface
+            localDeviceInfo={localDeviceInfo}
+            connectionStatus={connectionStatus}
+            connectedPeer={connectedPeer}
+            peers={peers}
+            timeoutExpired={timeoutExpired}
+            onAnalyze={handleAnalyze}
+            onConnect={handleConnect}
+            onTransfer={handleTransfer}
+            onRetryDiscovery={handleRetryDiscovery}
+            analysis={analysis}
+            isTransferring={isTransferring}
+          />
         </div>
       </main>
 
       {/* File Selectors - Hidden for now, can be shown in a modal */}
       {analysis && (
         <div style={{ display: 'none' }}>
-          <FileSelector 
-            files={analysis.files} 
-            onSelectionChange={(id, checked) => handleSelectionChange('files', id, checked)} 
+          <ItemSelector 
+            title="Files"
+            items={analysis.files} 
+            onSelectionChange={(id: string, checked: boolean) => handleSelectionChange('files', id, checked)} 
           />
-          <AppSelector 
-            apps={analysis.apps} 
-            onSelectionChange={(id, checked) => handleSelectionChange('apps', id, checked)} 
+          <ItemSelector 
+            title="Applications"
+            items={analysis.apps} 
+            onSelectionChange={(id: string, checked: boolean) => handleSelectionChange('apps', id, checked)} 
           />
-          <ConfigSelector 
-            configs={analysis.configurations} 
-            onSelectionChange={(id, checked) => handleSelectionChange('configurations', id, checked)} 
+          <ItemSelector 
+            title="Configurations"
+            items={analysis.configurations} 
+            onSelectionChange={(id: string, checked: boolean) => handleSelectionChange('configurations', id, checked)} 
           />
         </div>
       )}

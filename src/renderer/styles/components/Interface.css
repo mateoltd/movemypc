@@ -1,0 +1,217 @@
+.interface-interface {
+  display: grid;
+  grid-template-columns: 300px 1fr 300px;
+  gap: var(--spacing-xl);
+  height: 100%;
+  max-height: 80vh;
+  position: relative;
+}
+
+.interface-panel {
+  background: var(--color-surface-primary);
+  border: 1px solid var(--color-surface-secondary);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.interface-panel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.interface-panel.connected {
+  border-color: var(--color-status-success);
+  background: linear-gradient(135deg, var(--color-surface-primary) 0%, rgba(80, 250, 123, 0.05) 100%);
+}
+
+.interface-panel-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  flex: 1;
+}
+
+.computer-icon {
+  width: 60px;
+  height: 60px;
+  margin-bottom: var(--spacing-lg);
+  opacity: 0.8;
+}
+
+.computer-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: var(--color-text-secondary);
+}
+
+.interface-panel.connected .computer-icon svg {
+  fill: var(--color-status-success);
+}
+
+.interface-panel-title {
+  font-size: var(--font-size-h3);
+  font-weight: 300;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.interface-panel-subtitle {
+  font-size: var(--font-size-label);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.interface-panel-status {
+  font-size: var(--font-size-caption);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.interface-panel-status.connected {
+  background: rgba(80, 250, 123, 0.2);
+  color: var(--color-status-success);
+}
+
+.interface-panel-status.disconnected {
+  background: rgba(255, 85, 85, 0.2);
+  color: var(--color-status-error);
+}
+
+.interface-panel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+}
+
+.interface-zone {
+  background: var(--color-surface-primary);
+  border: 1px solid var(--color-surface-secondary);
+  border-radius: var(--border-radius-lg);
+  position: relative;
+  overflow: hidden;
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.interface-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+}
+
+.interface-empty {
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.interface-empty h3 {
+  font-size: var(--font-size-h2);
+  margin-bottom: var(--spacing-md);
+  color: var(--color-accent-primary);
+}
+
+.interface-empty p {
+  font-size: var(--font-size-body);
+  opacity: 0.7;
+}
+
+.device-list {
+  width: 100%;
+  max-width: 600px;
+}
+
+.device-list h3 {
+  text-align: center;
+  margin-bottom: var(--spacing-xl);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-h3);
+  font-weight: 300;
+}
+
+.device-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.device-card {
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-surface-tertiary);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-lg);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.device-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.2);
+}
+
+.device-card.selected {
+  border-color: var(--color-accent-primary);
+  background: rgba(108, 99, 255, 0.1);
+  box-shadow: 0 0 15px rgba(108, 99, 255, 0.3);
+}
+
+.device-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: var(--spacing-md);
+  opacity: 0.8;
+}
+
+.device-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: var(--color-text-secondary);
+}
+
+.device-card.selected .device-icon svg {
+  fill: var(--color-accent-primary);
+}
+
+.device-info {
+  width: 100%;
+}
+
+.device-name {
+  font-size: var(--font-size-body);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.device-address {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+}
+
+.transfer-status {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin-top: var(--spacing-sm);
+} 

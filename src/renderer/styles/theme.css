@@ -5,10 +5,11 @@
   --color-background: #1A1A1D;
   --color-surface-primary: #2C2C34;
   --color-surface-secondary: #4E4E50;
+  --color-surface-tertiary: #6A6A6A;
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #B0B0B0;
   --color-accent-primary: #6C63FF;
-  --color-accent-hover: #574EE5;
+  --color-accent-secondary: #574EE5;
   --color-status-success: #50FA7B;
   --color-status-warning: #FFB86C;
   --color-status-error: #FF5555;
@@ -26,6 +27,7 @@
   --font-size-display: 48px;
   --font-size-h1: 32px;
   --font-size-h2: 24px;
+  --font-size-h3: 20px;
   --font-size-body: 16px;
   --font-size-label: 14px;
   --font-size-caption: 12px;
@@ -41,35 +43,44 @@
 /* Button components */
 .btn {
   font-family: var(--font-family-base);
-  font-size: var(--font-size-label);
-  font-weight: 300;
-  padding: 12px 24px;
-  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-body);
+  font-weight: 500;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--border-radius-md);
   border: none;
   cursor: pointer;
   transition: all 0.3s ease;
+  text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--spacing-sm);
 }
 
-.btn-secondary {
-  background: var(--color-surface-primary);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-surface-secondary);
-}
-
-.btn-secondary:hover {
-  background: var(--color-surface-secondary);
-}
-
 .btn:disabled {
-  background: var(--color-surface-primary);
-  color: var(--color-text-secondary);
+  opacity: 0.6;
   cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+}
+
+.btn-primary {
+  background: var(--color-accent-primary);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-accent-secondary);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--color-surface-secondary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-surface-tertiary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-surface-tertiary);
+  border-color: var(--color-accent-primary);
 }
 
 /* Animation keyframes */
