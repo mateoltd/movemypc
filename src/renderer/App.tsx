@@ -59,7 +59,6 @@ export default function App() {
   );
 
   useEffect(() => {
-
     window.electronAPI
       .getLocalDeviceInfo()
       .then((info) => {
