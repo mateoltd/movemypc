@@ -13,15 +13,19 @@ interface DeviceCardProps {
   onSelect: (peer: Peer) => void;
 }
 
-const DeviceCard: React.FC<DeviceCardProps> = ({
-  peer,
-  isSelected,
-  onSelect,
-}) => {
+function DeviceCard({ peer, isSelected, onSelect }: DeviceCardProps) {
   return (
     <div
       className={`device-card ${isSelected ? 'selected' : ''}`}
       onClick={() => onSelect(peer)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(peer);
+        }
+      }}
+      role="button"
+      tabIndex={0}
     >
       <div className="device-icon">
         <ComputerIcon />
@@ -32,6 +36,6 @@ const DeviceCard: React.FC<DeviceCardProps> = ({
       </div>
     </div>
   );
-};
+}
 
 export default DeviceCard;

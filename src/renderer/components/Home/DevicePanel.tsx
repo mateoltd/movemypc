@@ -10,14 +10,14 @@ interface DevicePanelProps {
   type: 'source' | 'destination';
 }
 
-const DevicePanel: React.FC<DevicePanelProps> = ({
+function DevicePanel({
   title,
   subtitle,
   status,
   isConnected = false,
   actions,
   type,
-}) => {
+}: DevicePanelProps) {
   const getStatusText = () => {
     if (status === 'connected') return 'Connected';
     if (status === 'disconnected') return 'Disconnected';
@@ -41,6 +41,11 @@ const DevicePanel: React.FC<DevicePanelProps> = ({
       {actions && <div className="interface-panel-actions">{actions}</div>}
     </div>
   );
+}
+
+DevicePanel.defaultProps = {
+  isConnected: false,
+  actions: null,
 };
 
 export default DevicePanel;

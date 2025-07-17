@@ -43,20 +43,20 @@ class Discovery {
   /** called once main window is fully ready */
   flush(win: BrowserWindow) {
     this.rendererReady = true;
-    this.queue.forEach((e) => this.send(e, win));
+    this.queue.forEach((e) => Discovery.send(e, win));
     this.queue = [];
   }
 
   private enqueue(kind: 'up' | 'down', svc: any) {
     const evt: QueuedEvent = { kind, svc };
     if (this.rendererReady && BrowserWindow.getAllWindows().length) {
-      this.send(evt, BrowserWindow.getAllWindows()[0]);
+      Discovery.send(evt, BrowserWindow.getAllWindows()[0]);
     } else {
       this.queue.push(evt);
     }
   }
 
-  private send(evt: QueuedEvent, win: BrowserWindow) {
+  private static send(evt: QueuedEvent, win: BrowserWindow) {
     const hostField =
       Array.isArray(evt.svc.addresses) && evt.svc.addresses.length
         ? evt.svc.addresses[0]

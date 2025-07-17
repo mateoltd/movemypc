@@ -19,13 +19,13 @@ interface FileManagerProps {
   onSelectAll: (checked: boolean) => void;
 }
 
-const FileManager: React.FC<FileManagerProps> = ({
+function FileManager({
   title,
   items,
   selectedItems,
   onSelectionChange,
   onSelectAll,
-}) => {
+}: FileManagerProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
     new Set(),
   );
@@ -34,17 +34,17 @@ const FileManager: React.FC<FileManagerProps> = ({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   // Build tree structure from flat items
-  const buildTree = (items: FileItem[]): FileItem[] => {
+  const buildTree = (flatItems: FileItem[]): FileItem[] => {
     const itemMap = new Map<string, FileItem>();
     const roots: FileItem[] = [];
 
     // First pass: create map of all items
-    items.forEach((item) => {
+    flatItems.forEach((item) => {
       itemMap.set(item.id, { ...item, children: [] });
     });
 
     // Second pass: build tree structure
-    items.forEach((item) => {
+    flatItems.forEach((item) => {
       const treeItem = itemMap.get(item.id)!;
       if (item.parent) {
         const parent = itemMap.get(item.parent);
@@ -67,8 +67,8 @@ const FileManager: React.FC<FileManagerProps> = ({
   const filteredItems = useMemo(() => {
     if (!searchTerm) return treeItems;
 
-    const filterTree = (items: FileItem[]): FileItem[] => {
-      return items.reduce((acc, item) => {
+    const filterTree = (itemsToFilter: FileItem[]): FileItem[] => {
+      return itemsToFilter.reduce((acc, item) => {
         const matchesSearch =
           item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.path.toLowerCase().includes(searchTerm.toLowerCase());
@@ -94,8 +94,8 @@ const FileManager: React.FC<FileManagerProps> = ({
 
   // Sort items
   const sortedItems = useMemo(() => {
-    const sortTree = (items: FileItem[]): FileItem[] => {
-      return items
+    const sortTree = (itemsToSort: FileItem[]): FileItem[] => {
+      return itemsToSort
         .map((item) => ({
           ...item,
           children: item.children ? sortTree(item.children) : undefined,
@@ -115,6 +115,9 @@ const FileManager: React.FC<FileManagerProps> = ({
               break;
             case 'type':
               comparison = a.type.localeCompare(b.type);
+              break;
+            default:
+              comparison = a.name.localeCompare(b.name);
               break;
           }
 
@@ -205,11 +208,15 @@ const FileManager: React.FC<FileManagerProps> = ({
           <div className="file-item-left">
             {item.type === 'folder' && (
               <button
+                type="button"
                 className="expand-button"
                 onClick={() => toggleFolder(item.id)}
                 disabled={!hasChildren}
               >
-                {hasChildren ? (isExpanded ? '▼' : '▶') : ''}
+                {(() => {
+                  if (!hasChildren) return '';
+                  return isExpanded ? '▼' : '▶';
+                })()}
               </button>
             )}
             <input
@@ -273,16 +280,19 @@ const FileManager: React.FC<FileManagerProps> = ({
           </div>
 
           <div className="select-all-container">
-            <input
-              type="checkbox"
-              checked={allItemsSelected}
-              ref={(input) => {
-                if (input) input.indeterminate = someItemsSelected;
-              }}
-              onChange={(e) => onSelectAll(e.target.checked)}
-              className="select-all-checkbox"
-            />
-            <label>Select All</label>
+            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+            <label className="select-all-label">
+              <input
+                type="checkbox"
+                checked={allItemsSelected}
+                ref={(input) => {
+                  if (input) input.indeterminate = someItemsSelected;
+                }}
+                onChange={(e) => onSelectAll(e.target.checked)}
+                className="select-all-checkbox"
+              />
+              Select All
+            </label>
           </div>
         </div>
       </div>
@@ -291,18 +301,21 @@ const FileManager: React.FC<FileManagerProps> = ({
         <div className="sort-controls">
           <span>Sort by:</span>
           <button
+            type="button"
             className={`sort-button ${sortBy === 'name' ? 'active' : ''}`}
             onClick={() => handleSort('name')}
           >
             Name {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
           </button>
           <button
+            type="button"
             className={`sort-button ${sortBy === 'size' ? 'active' : ''}`}
             onClick={() => handleSort('size')}
           >
             Size {sortBy === 'size' && (sortOrder === 'asc' ? '↑' : '↓')}
           </button>
           <button
+            type="button"
             className={`sort-button ${sortBy === 'type' ? 'active' : ''}`}
             onClick={() => handleSort('type')}
           >
@@ -340,6 +353,6 @@ const FileManager: React.FC<FileManagerProps> = ({
       </div>
     </div>
   );
-};
+}
 
 export default FileManager;

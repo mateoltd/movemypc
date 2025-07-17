@@ -13,11 +13,11 @@ interface DeviceDiscoveryProps {
   onPeerSelect: (peer: Peer) => void;
 }
 
-const DeviceDiscovery: React.FC<DeviceDiscoveryProps> = ({
+export default function DeviceDiscovery({
   peers,
   selectedPeer,
   onPeerSelect,
-}) => {
+}: DeviceDiscoveryProps) {
   return (
     <div className="interface-zone">
       <div className="interface-content">
@@ -44,6 +44,4 @@ const DeviceDiscovery: React.FC<DeviceDiscoveryProps> = ({
       </div>
     </div>
   );
-};
-
-export default DeviceDiscovery;
+}

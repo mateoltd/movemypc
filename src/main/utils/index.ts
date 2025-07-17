@@ -1,1 +1,1 @@
-export * from './device-specs'; 
+export * from './device-specs';

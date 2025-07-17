@@ -41,7 +41,6 @@ interface InterfaceProps {
   connectionStatus: string;
   connectedPeer: Peer | null;
   peers: Peer[];
-  timeoutExpired: boolean;
   onAnalyze: () => void;
   onConnect: (peer: Peer) => void;
   onTransfer: () => void;
@@ -51,12 +50,16 @@ interface InterfaceProps {
   analysisProgress: AnalysisProgress | null;
   isAnalyzing: boolean;
   selectedItems: SelectedItems;
-  onSelectionChange: (type: keyof SelectedItems, id: string, checked: boolean) => void;
+  onSelectionChange: (
+    type: keyof SelectedItems,
+    id: string,
+    checked: boolean,
+  ) => void;
   onCloseFileSelection: () => void;
   showFileSelection: boolean;
 }
 
-const Interface: React.FC<InterfaceProps> = ({
+function Interface({
   localDeviceInfo,
   connectionStatus,
   connectedPeer,
@@ -73,7 +76,7 @@ const Interface: React.FC<InterfaceProps> = ({
   onSelectionChange,
   onCloseFileSelection,
   showFileSelection,
-}) => {
+}: InterfaceProps) {
   const [selectedPeer, setSelectedPeer] = useState<Peer | null>(null);
 
   const handlePeerSelect = (peer: Peer) => {
@@ -103,8 +106,9 @@ const Interface: React.FC<InterfaceProps> = ({
 
   const sourceActions = (
     <>
-      <button 
-        className="btn btn-secondary" 
+      <button
+        type="button"
+        className="btn btn-secondary"
         onClick={onAnalyze}
         disabled={isAnalyzing}
       >
@@ -117,14 +121,20 @@ const Interface: React.FC<InterfaceProps> = ({
               <small className="warning-text">
                 ⚠️ {analysisProgress.warning.details}
               </small>
-            ) : analysisProgress.currentPath && (
-              <small>Scanning: {analysisProgress.currentPath}</small>
+            ) : (
+              analysisProgress.currentPath && (
+                <small>Scanning: {analysisProgress.currentPath}</small>
+              )
             )}
           </div>
         </div>
       )}
       {peers.length === 0 && (
-        <button className="btn btn-primary" onClick={onRetryDiscovery}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={onRetryDiscovery}
+        >
           Search for Devices
         </button>
       )}
@@ -134,6 +144,7 @@ const Interface: React.FC<InterfaceProps> = ({
   const destinationActions = connectedPeer ? (
     <>
       <button
+        type="button"
         className="btn btn-primary"
         onClick={onTransfer}
         disabled={!analysis || isTransferring}
@@ -191,6 +202,6 @@ const Interface: React.FC<InterfaceProps> = ({
       )}
     </>
   );
-};
+}
 
 export default Interface;

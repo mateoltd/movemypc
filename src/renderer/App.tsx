@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import log from 'electron-log';
 import Interface from './components/Home/Interface';
 import WarningNotification from './components/Common/WarningNotification';
 import './App.css';
@@ -45,22 +46,28 @@ export default function App() {
     configurations: [],
   });
   const [peers, setPeers] = useState<Peer[]>([]);
-  const [timeoutExpired, setTimeoutExpired] = useState(false);
   const [connectedPeer, setConnectedPeer] = useState<Peer | null>(null);
   const [isTransferring, setIsTransferring] = useState(false);
   const [localDeviceInfo, setLocalDeviceInfo] =
     useState<LocalDeviceInfo | null>(null);
   const [showFileSelection, setShowFileSelection] = useState(false);
-  const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | null>(null);
+  const [analysisProgress, setAnalysisProgress] =
+    useState<AnalysisProgress | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [currentWarning, setCurrentWarning] = useState<AnalysisWarning | null>(null);
+  const [currentWarning, setCurrentWarning] = useState<AnalysisWarning | null>(
+    null,
+  );
 
   useEffect(() => {
-    const timer = setTimeout(() => setTimeoutExpired(true), 10000);
-
-    window.electronAPI.getLocalDeviceInfo().then((info) => {
-      setLocalDeviceInfo(info);
-    });
+    window.electronAPI
+      .getLocalDeviceInfo()
+      .then((info) => {
+        setLocalDeviceInfo(info);
+        return info;
+      })
+      .catch((error) => {
+        log.error('Failed to get local device info:', error);
+      });
 
     window.electronAPI.onConnectionStatus((status: string) => {
       setConnectionStatus(status);
@@ -70,12 +77,12 @@ export default function App() {
     });
 
     window.electronAPI.onFileCopyError((error: any) => {
-      alert(`Error copying file: ${error.fileName}\n${error.error}`);
+      log.error(`Error copying file: ${error.fileName}`, error.error);
       setIsTransferring(false);
     });
 
     window.electronAPI.onNetworkError((error: string) => {
-      alert(`Network error:\n${error}`);
+      log.error('Network error:', error);
       setIsTransferring(false);
     });
 
@@ -112,12 +119,12 @@ export default function App() {
     });
 
     window.electronAPI.onAnalysisError((error: string) => {
-      alert(`Analysis error: ${error}`);
+      log.error('Analysis error:', error);
       setIsAnalyzing(false);
       setAnalysisProgress(null);
     });
 
-    return () => clearTimeout(timer);
+    return () => {};
   }, []);
 
   const handleAnalyze = async () => {
@@ -127,7 +134,7 @@ export default function App() {
       await window.electronAPI.analyzeSystem();
       // Analysis result will be handled by the onAnalysisComplete event
     } catch (error) {
-      console.error('Analysis failed:', error);
+      log.error('Analysis failed:', error);
       setIsAnalyzing(false);
       setAnalysisProgress(null);
     }
@@ -164,16 +171,7 @@ export default function App() {
     setShowFileSelection(false);
   };
 
-  const handleTransfer = () => {
-    if (connectionStatus === 'connected' && analysis) {
-      setIsTransferring(true);
-      window.electronAPI.transferFiles(selectedItems);
-      setShowFileSelection(false);
-    }
-  };
-
   const handleRetryDiscovery = () => {
-    setTimeoutExpired(false);
     setPeers([]);
     window.electronAPI.flushDiscovery();
   };
@@ -185,17 +183,6 @@ export default function App() {
 
   const handleWarningDismiss = () => {
     setCurrentWarning(null);
-  };
-
-  const getStatusText = () => {
-    if (connectionStatus === 'connected') return 'Connected';
-    if (connectionStatus === 'disconnected') return 'Disconnected';
-    return 'Waiting for connection...';
-  };
-
-  const getDestinationText = () => {
-    if (connectedPeer) return connectedPeer.name;
-    return 'PC to transfer';
   };
 
   return (
@@ -211,7 +198,6 @@ export default function App() {
             connectionStatus={connectionStatus}
             connectedPeer={connectedPeer}
             peers={peers}
-            timeoutExpired={timeoutExpired}
             onAnalyze={handleAnalyze}
             onConnect={handleConnect}
             onTransfer={handleOpenFileSelection}
@@ -226,7 +212,7 @@ export default function App() {
             showFileSelection={showFileSelection}
           />
         </div>
-        
+
         {currentWarning && (
           <WarningNotification
             warning={currentWarning}

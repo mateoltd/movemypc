@@ -52,4 +52,4 @@ export const getConfigurationDirectories = (): string[] => [
   join(homedir(), '.nuget'),
   join(homedir(), '.gitconfig'),
   homedir(),
-]; 
+];

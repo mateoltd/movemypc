@@ -48,4 +48,4 @@ export const CONFIG_PATTERNS = [
   { pattern: /^\.env$/i, type: 'Environment File' },
   { pattern: /^config$/i, type: 'Config Directory' },
   { pattern: /^settings$/i, type: 'Settings Directory' },
-]; 
+];
