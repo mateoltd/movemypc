@@ -14,11 +14,11 @@ interface WarningNotificationProps {
   onDismiss: () => void;
 }
 
-const WarningNotification: React.FC<WarningNotificationProps> = ({
+function WarningNotification({
   warning,
   onExclude,
   onDismiss,
-}) => {
+}: WarningNotificationProps) {
   const getWarningIcon = () => {
     switch (warning.type) {
       case 'large_directory':
@@ -65,10 +65,11 @@ const WarningNotification: React.FC<WarningNotificationProps> = ({
             </p>
           </div>
         </div>
-        
+
         <div className="warning-actions">
           {warning.canExclude && (
             <button
+              type="button"
               className="btn btn-warning"
               onClick={() => onExclude(warning.path)}
             >
@@ -76,6 +77,7 @@ const WarningNotification: React.FC<WarningNotificationProps> = ({
             </button>
           )}
           <button
+            type="button"
             className="btn btn-secondary"
             onClick={onDismiss}
           >
@@ -85,6 +87,6 @@ const WarningNotification: React.FC<WarningNotificationProps> = ({
       </div>
     </div>
   );
-};
+}
 
-export default WarningNotification; 
+export default WarningNotification;
