@@ -8,16 +8,21 @@
  * When running `npm run build` or `npm run build:main`, this file is compiled to
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
-import path from 'path';
+import path, { join } from 'path';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import * as fs from 'fs-extra';
 import { homedir, hostname, networkInterfaces } from 'os';
-import { join } from 'path';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
-import { analyzeSystem, setProgressCallback, addDirectoryExclusion, removeDirectoryExclusion, getExcludedDirectories } from './system-analysis';
+import {
+  analyzeSystem,
+  setProgressCallback,
+  addDirectoryExclusion,
+  removeDirectoryExclusion,
+  getExcludedDirectories,
+} from './system-analysis';
 import { startServer, connectToServer, sendData } from './network';
 import discoveryService from './discovery';
 
@@ -39,15 +44,16 @@ ipcMain.on('ipc-example', async (event, arg) => {
 
 function getLocalIpAddress() {
   const nets = networkInterfaces();
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name]!) {
-      // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
-      if (net.family === 'IPv4' && !net.internal) {
-        return net.address;
-      }
-    }
-  }
-  return '127.0.0.1'; // fallback
+  return (
+    Object.keys(nets).reduce((found, name) => {
+      if (found) return found;
+      const networkList = nets[name]!;
+      const ipv4Net = networkList.find(
+        (net) => net.family === 'IPv4' && !net.internal,
+      );
+      return ipv4Net?.address || found;
+    }, '') || '127.0.0.1'
+  ); // fallback
 }
 
 ipcMain.handle('get-local-device-info', async () => {
@@ -61,27 +67,28 @@ ipcMain.handle('analyze-system', async (event) => {
   setProgressCallback((progress) => {
     event.sender.send('analysis-progress', progress);
   });
-  
+
   try {
     const analysis = await analyzeSystem();
     event.sender.send('analysis-complete', analysis);
     return analysis;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
     event.sender.send('analysis-error', errorMessage);
     throw error;
   }
 });
 
-ipcMain.handle('add-directory-exclusion', async (event, path: string) => {
-  addDirectoryExclusion(path);
+ipcMain.handle('add-directory-exclusion', async (event, dirPath: string) => {
+  addDirectoryExclusion(dirPath);
 });
 
-ipcMain.handle('remove-directory-exclusion', async (event, path: string) => {
-  removeDirectoryExclusion(path);
+ipcMain.handle('remove-directory-exclusion', async (event, dirPath: string) => {
+  removeDirectoryExclusion(dirPath);
 });
 
-ipcMain.handle('get-excluded-directories', async (event) => {
+ipcMain.handle('get-excluded-directories', async () => {
   return getExcludedDirectories();
 });
 
@@ -103,7 +110,7 @@ ipcMain.on('file-transfer-request', (event, payload) => {
   const transferDir = join(homedir(), 'transferred-files');
   fs.ensureDirSync(transferDir);
 
-  const { files, apps, configurations } = payload;
+  const { files } = payload;
 
   files.forEach((file: { id: string; name: string; path: string }) => {
     const destPath = join(transferDir, file.name);
