@@ -51,7 +51,11 @@ interface InterfaceProps {
   analysisProgress: AnalysisProgress | null;
   isAnalyzing: boolean;
   selectedItems: SelectedItems;
-  onSelectionChange: (type: keyof SelectedItems, id: string, checked: boolean) => void;
+  onSelectionChange: (
+    type: keyof SelectedItems,
+    id: string,
+    checked: boolean,
+  ) => void;
   onCloseFileSelection: () => void;
   showFileSelection: boolean;
 }
@@ -103,8 +107,8 @@ const Interface: React.FC<InterfaceProps> = ({
 
   const sourceActions = (
     <>
-      <button 
-        className="btn btn-secondary" 
+      <button
+        className="btn btn-secondary"
         onClick={onAnalyze}
         disabled={isAnalyzing}
       >
@@ -117,8 +121,10 @@ const Interface: React.FC<InterfaceProps> = ({
               <small className="warning-text">
                 ⚠️ {analysisProgress.warning.details}
               </small>
-            ) : analysisProgress.currentPath && (
-              <small>Scanning: {analysisProgress.currentPath}</small>
+            ) : (
+              analysisProgress.currentPath && (
+                <small>Scanning: {analysisProgress.currentPath}</small>
+              )
             )}
           </div>
         </div>
