@@ -1,20 +1,19 @@
 import { join } from 'path';
-import * as fs from 'fs';
 import log from 'electron-log';
-import { 
-  generateFileId, 
-  getFileExtension, 
-  isDirectoryAccessible, 
-  safeReaddir, 
-  safeStat 
+import {
+  generateFileId,
+  getFileExtension,
+  isDirectoryAccessible,
+  safeReaddir,
+  safeStat,
 } from '../utils/file-utils';
-import { shouldExcludePath, isPathExcluded } from '../managers/exclusion-manager';
-import { updateProgress, sendProgress } from '../managers/progress-manager';
-import { processBatch } from '../processors/concurrent-processor';
-import { 
-  FileItem, 
-  AnalysisLimits, 
-  AnalysisWarning 
+import { shouldExcludePath, isPathExcluded } from '../managers/exclusion';
+import { updateProgress, sendProgress } from '../managers/manager';
+import { processBatch } from '../processors/concurrent';
+import {
+  FileItem,
+  AnalysisLimits,
+  AnalysisWarning,
 } from '../../types/analysis-types';
 
 /**
@@ -98,16 +97,42 @@ export const scanDirectory = async (
         };
 
         try {
-          const children = await scanDirectory(fullPath, analysisLimits, id, depth + 1);
+          const children = await scanDirectory(
+            fullPath,
+            analysisLimits,
+            id,
+            depth + 1,
+          );
           folderItem.children = children;
-        } catch (error) {
-          log.warn(`Failed to scan subdirectory ${fullPath}:`, error);
+        } catch (error: any) {
+          const errorCode = error.code || 'UNKNOWN';
+          const errorMessage = error.message || 'Unknown error';
+
+          switch (errorCode) {
+            case 'EACCES':
+              log.warn(`Permission denied scanning subdirectory: ${fullPath}`);
+              break;
+            case 'ENOENT':
+              log.warn(`Subdirectory no longer exists: ${fullPath}`);
+              break;
+            case 'EMFILE':
+            case 'ENFILE':
+              log.error(
+                `Too many open files when scanning subdirectory: ${fullPath}`,
+              );
+              break;
+            default:
+              log.warn(
+                `Failed to scan subdirectory ${fullPath} (${errorCode}): ${errorMessage}`,
+              );
+          }
+
           folderItem.children = [];
         }
 
         return folderItem;
       }
-      
+
       if (stats.isFile()) {
         if (stats.size > analysisLimits.largeSizeThreshold) {
           log.info(
@@ -132,10 +157,35 @@ export const scanDirectory = async (
       return null;
     };
 
-    const processedItems = await processBatch(entries, processEntry, analysisLimits);
+    const processedItems = await processBatch(
+      entries,
+      processEntry,
+      analysisLimits,
+    );
     items.push(...processedItems.filter((item) => item !== null));
-  } catch (error) {
-    log.warn(`Failed to scan directory ${dirPath}:`, error);
+  } catch (error: any) {
+    const errorCode = error.code || 'UNKNOWN';
+    const errorMessage = error.message || 'Unknown error';
+
+    switch (errorCode) {
+      case 'EACCES':
+        log.warn(`Permission denied scanning directory: ${dirPath}`);
+        break;
+      case 'ENOENT':
+        log.warn(`Directory no longer exists: ${dirPath}`);
+        break;
+      case 'ENOTDIR':
+        log.warn(`Path is not a directory: ${dirPath}`);
+        break;
+      case 'EMFILE':
+      case 'ENFILE':
+        log.error(`Too many open files when scanning directory: ${dirPath}`);
+        break;
+      default:
+        log.warn(
+          `Failed to scan directory ${dirPath} (${errorCode}): ${errorMessage}`,
+        );
+    }
   }
 
   return items;
@@ -166,10 +216,14 @@ export const scanDirectories = async (
       return [];
     }
 
-    return await scanDirectory(dir, analysisLimits);
+    return scanDirectory(dir, analysisLimits);
   };
 
-  const processedResults = await processBatch(directories, processDirOperation, analysisLimits);
+  const processedResults = await processBatch(
+    directories,
+    processDirOperation,
+    analysisLimits,
+  );
 
   processedResults.forEach((result) => {
     if (Array.isArray(result)) {
@@ -186,4 +240,4 @@ export const scanDirectories = async (
   });
 
   return Array.from(uniqueFiles.values());
-}; 
+};

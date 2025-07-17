@@ -53,4 +53,4 @@ export const getProgressUpdateCounter = (): number => {
 
 export const incrementProgressCounter = (): void => {
   progressUpdateCounter += 1;
-}; 
+};

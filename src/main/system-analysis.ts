@@ -1,9 +1,9 @@
 /**
  * System Analysis - Main Entry Point
- * 
+ *
  * This file serves as the main entry point for system analysis functionality.
  * It now delegates to the modular architecture under ./system-analysis/ for better maintainability.
- * 
+ *
  * Architecture:
  * - managers/: Progress tracking, exclusion management
  * - processors/: Concurrent processing utilities
@@ -12,7 +12,7 @@
  * - core/: Main orchestrator that coordinates all modules
  */
 
-import { AnalysisOrchestrator } from './system-analysis/core/analysis-orchestrator';
+import AnalysisOrchestrator from './system-analysis/core/orchestrator';
 import { AnalysisProgress, SystemAnalysisResult } from './types/analysis-types';
 
 // Global orchestrator instance
@@ -74,11 +74,11 @@ export const getExcludedDirectories = (): string[] => {
  */
 export const analyzeSystem = async (): Promise<SystemAnalysisResult> => {
   const orchestrator = getOrchestrator();
-  
+
   try {
     // Initialize the orchestrator if not already initialized
     await orchestrator.initialize();
-    
+
     // Perform complete analysis
     return await orchestrator.performCompleteAnalysis();
   } catch (error) {
@@ -97,11 +97,11 @@ export const analyzeSystemSelective = async (
   types: Array<'files' | 'apps' | 'configurations'>,
 ): Promise<Partial<SystemAnalysisResult>> => {
   const orchestrator = getOrchestrator();
-  
+
   try {
     // Initialize the orchestrator if not already initialized
     await orchestrator.initialize();
-    
+
     // Perform selective analysis
     return await orchestrator.performSelectiveAnalysis(types);
   } catch (error) {
@@ -115,9 +115,11 @@ export const analyzeSystemSelective = async (
  * Analyzes only user files
  * @returns Promise resolving to array of user file items
  */
-export const analyzeUserFiles = async (): Promise<import('./types/analysis-types').FileItem[]> => {
+export const analyzeUserFiles = async (): Promise<
+  import('./types/analysis-types').FileItem[]
+> => {
   const orchestrator = getOrchestrator();
-  
+
   try {
     await orchestrator.initialize();
     return await orchestrator.analyzeUserFiles();
@@ -131,9 +133,11 @@ export const analyzeUserFiles = async (): Promise<import('./types/analysis-types
  * Analyzes only installed applications
  * @returns Promise resolving to array of application file items
  */
-export const analyzeApplications = async (): Promise<import('./types/analysis-types').FileItem[]> => {
+export const analyzeApplications = async (): Promise<
+  import('./types/analysis-types').FileItem[]
+> => {
   const orchestrator = getOrchestrator();
-  
+
   try {
     await orchestrator.initialize();
     return await orchestrator.analyzeApplications();
@@ -147,9 +151,11 @@ export const analyzeApplications = async (): Promise<import('./types/analysis-ty
  * Analyzes only system configuration files
  * @returns Promise resolving to array of configuration file items
  */
-export const analyzeConfigurations = async (): Promise<import('./types/analysis-types').FileItem[]> => {
+export const analyzeConfigurations = async (): Promise<
+  import('./types/analysis-types').FileItem[]
+> => {
   const orchestrator = getOrchestrator();
-  
+
   try {
     await orchestrator.initialize();
     return await orchestrator.analyzeConfigurations();

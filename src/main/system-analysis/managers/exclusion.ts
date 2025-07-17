@@ -1,7 +1,9 @@
+import log from 'electron-log';
 import { EXCLUDE_PATTERNS } from '../../config';
 import { ExclusionManager } from '../../types/analysis-types';
 
 let exclusionManager: ExclusionManager;
+let isCleanupRegistered = false;
 
 export const createExclusionManager = (): ExclusionManager => {
   const excludedPaths = new Set<string>();
@@ -21,8 +23,34 @@ export const createExclusionManager = (): ExclusionManager => {
   };
 };
 
+/**
+ * Registers cleanup handlers for process termination
+ */
+const registerCleanupHandlers = (): void => {
+  if (isCleanupRegistered) {
+    return;
+  }
+
+  const cleanup = () => {
+    log.info('Cleaning up exclusion manager state...');
+    cleanupExclusionManager();
+  };
+
+  process.on('exit', cleanup);
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+  process.on('uncaughtException', (error) => {
+    log.error('Uncaught exception in exclusion manager:', error);
+    cleanup();
+  });
+
+  isCleanupRegistered = true;
+};
+
 export const initializeExclusionManager = (): void => {
   exclusionManager = createExclusionManager();
+  registerCleanupHandlers();
+  log.debug('Exclusion manager initialized');
 };
 
 export const getExclusionManager = (): ExclusionManager => {
@@ -57,4 +85,14 @@ export const isPathExcluded = (path: string): boolean => {
     return false;
   }
   return exclusionManager.isExcluded(path);
-}; 
+};
+
+/**
+ * Cleanup function to be called when analysis is complete or interrupted
+ */
+export const cleanupExclusionManager = (): void => {
+  if (exclusionManager) {
+    exclusionManager.excludedPaths.clear();
+    log.debug('Exclusion manager cleanup completed');
+  }
+};

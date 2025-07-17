@@ -1,13 +1,10 @@
 import log from 'electron-log';
 import { isDirectoryAccessible } from '../utils/file-utils';
-import { sendProgress } from '../managers/progress-manager';
-import { processConcurrentOperations } from '../processors/concurrent-processor';
+import { sendProgress } from '../managers/manager';
+import { processConcurrentOperations } from '../processors/concurrent';
 import { scanDirectory } from './directory-scanner';
 import { getConfigurationDirectories, CONFIG_PATTERNS } from '../../config';
-import { 
-  FileItem, 
-  AnalysisLimits 
-} from '../../types/analysis-types';
+import { FileItem, AnalysisLimits } from '../../types/analysis-types';
 
 /**
  * Filters files to find configuration files based on patterns
@@ -16,24 +13,24 @@ import {
  */
 const filterConfigurationFiles = (files: FileItem[]): FileItem[] => {
   const configFiles: FileItem[] = [];
-  
+
   const checkFileForConfig = (file: FileItem): void => {
     if (file.type === 'file') {
       const matchesPattern = CONFIG_PATTERNS.some((pattern) =>
         pattern.pattern.test(file.name.toLowerCase()),
       );
-      
+
       if (matchesPattern) {
         configFiles.push(file);
       }
     }
-    
+
     // Recursively check children if it's a folder
     if (file.type === 'folder' && file.children) {
       file.children.forEach(checkFileForConfig);
     }
   };
-  
+
   files.forEach(checkFileForConfig);
   return configFiles;
 };
@@ -70,8 +67,30 @@ const processConfigDir = async (
     const files = await scanDirectory(configDir, analysisLimits);
     const configFiles = filterConfigurationFiles(files);
     dirConfigs.push(...configFiles);
-  } catch (error) {
-    log.warn(`Failed to scan configuration directory ${configDir}:`, error);
+  } catch (error: any) {
+    const errorCode = error.code || 'UNKNOWN';
+    const errorMessage = error.message || 'Unknown error';
+
+    switch (errorCode) {
+      case 'EACCES':
+        log.warn(
+          `Permission denied scanning configuration directory: ${configDir}`,
+        );
+        break;
+      case 'ENOENT':
+        log.warn(`Configuration directory no longer exists: ${configDir}`);
+        break;
+      case 'EMFILE':
+      case 'ENFILE':
+        log.error(
+          `Too many open files when scanning configuration directory: ${configDir}`,
+        );
+        break;
+      default:
+        log.warn(
+          `Failed to scan configuration directory ${configDir} (${errorCode}): ${errorMessage}`,
+        );
+    }
   }
 
   return dirConfigs;
@@ -96,7 +115,8 @@ export const analyzeConfigurations = async (
 
   const configDirResults = await processConcurrentOperations(
     configDirs.map((dir, index) => ({ dir, index })),
-    async ({ dir, index }) => processConfigDir(dir, index, configDirs.length, analysisLimits),
+    async ({ dir, index }) =>
+      processConfigDir(dir, index, configDirs.length, analysisLimits),
     analysisLimits.concurrencyLevel,
   );
 
@@ -123,7 +143,7 @@ export const scanUserConfigurations = async (
 
   const scanUserConfigDir = async (dir: string): Promise<FileItem[]> => {
     const configs: FileItem[] = [];
-    
+
     const isAccessible = await isDirectoryAccessible(dir);
     if (!isAccessible) {
       return configs;
@@ -133,10 +153,32 @@ export const scanUserConfigurations = async (
       const files = await scanDirectory(dir, analysisLimits);
       const configFiles = filterConfigurationFiles(files);
       configs.push(...configFiles);
-    } catch (error) {
-      log.warn(`Failed to scan user configuration directory ${dir}:`, error);
+    } catch (error: any) {
+      const errorCode = error.code || 'UNKNOWN';
+      const errorMessage = error.message || 'Unknown error';
+
+      switch (errorCode) {
+        case 'EACCES':
+          log.warn(
+            `Permission denied scanning user configuration directory: ${dir}`,
+          );
+          break;
+        case 'ENOENT':
+          log.warn(`User configuration directory no longer exists: ${dir}`);
+          break;
+        case 'EMFILE':
+        case 'ENFILE':
+          log.error(
+            `Too many open files when scanning user configuration directory: ${dir}`,
+          );
+          break;
+        default:
+          log.warn(
+            `Failed to scan user configuration directory ${dir} (${errorCode}): ${errorMessage}`,
+          );
+      }
     }
-    
+
     return configs;
   };
 
@@ -161,4 +203,4 @@ export const scanUserConfigurations = async (
  */
 export const getConfigurationPatterns = () => {
   return CONFIG_PATTERNS;
-}; 
+};

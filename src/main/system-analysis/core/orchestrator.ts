@@ -1,33 +1,40 @@
+// NOTE: Some methods in this class (e.g., setProgressCallback, clearProgressCallback, addDirectoryExclusion, removeDirectoryExclusion, getExcludedDirectories)
+// do not use 'this' and are flagged by the linter to be static. We intentionally keep them as instance methods to allow for future flexibility,
+// such as supporting per-instance state or polymorphism, and to maintain a consistent API for the orchestrator.
+// Linter warnings for these methods are intentionally ignored
 import log from 'electron-log';
 import { detectDeviceSpecs, calculateOptimalLimits } from '../../utils';
 import { getUserDirectories } from '../../config';
-import { 
-  initializeExclusionManager, 
-  addDirectoryExclusion, 
-  removeDirectoryExclusion, 
-  getExcludedDirectories 
-} from '../managers/exclusion-manager';
-import { 
-  setProgressCallback, 
-  clearProgressCallback, 
-  setAnalysisLimits, 
-  resetProgressCounter 
-} from '../managers/progress-manager';
-import { resetFileCounter } from '../utils/file-utils';
+import {
+  initializeExclusionManager,
+  addDirectoryExclusion,
+  removeDirectoryExclusion,
+  getExcludedDirectories,
+  cleanupExclusionManager,
+} from '../managers/exclusion';
+import {
+  setProgressCallback,
+  clearProgressCallback,
+  setAnalysisLimits,
+  resetProgressCounter,
+} from '../managers/manager';
+import { resetFileCounter, cleanupFileUtils } from '../utils/file-utils';
+
 import { scanDirectories } from '../analyzers/directory-scanner';
 import { analyzeApplications } from '../analyzers/applications-scanner';
 import { analyzeConfigurations } from '../analyzers/configurations-scanner';
-import { 
-  AnalysisProgress, 
-  SystemAnalysisResult, 
-  AnalysisLimits 
+import {
+  AnalysisProgress,
+  SystemAnalysisResult,
+  AnalysisLimits,
 } from '../../types/analysis-types';
 
 /**
  * Main analysis orchestrator that coordinates all system analysis modules
  */
-export class AnalysisOrchestrator {
+export default class AnalysisOrchestrator {
   private analysisLimits: AnalysisLimits | null = null;
+
   private isInitialized = false;
 
   /**
@@ -72,6 +79,7 @@ export class AnalysisOrchestrator {
    * Sets the progress callback for analysis updates
    * @param callback - Progress callback function
    */
+  // eslint-disable-next-line class-methods-use-this
   setProgressCallback(callback: (progress: AnalysisProgress) => void): void {
     setProgressCallback(callback);
   }
@@ -79,6 +87,7 @@ export class AnalysisOrchestrator {
   /**
    * Clears the progress callback
    */
+  // eslint-disable-next-line class-methods-use-this
   clearProgressCallback(): void {
     clearProgressCallback();
   }
@@ -87,6 +96,7 @@ export class AnalysisOrchestrator {
    * Adds a directory to the exclusion list
    * @param path - Directory path to exclude
    */
+  // eslint-disable-next-line class-methods-use-this
   addDirectoryExclusion(path: string): void {
     addDirectoryExclusion(path);
   }
@@ -95,6 +105,7 @@ export class AnalysisOrchestrator {
    * Removes a directory from the exclusion list
    * @param path - Directory path to remove from exclusions
    */
+  // eslint-disable-next-line class-methods-use-this
   removeDirectoryExclusion(path: string): void {
     removeDirectoryExclusion(path);
   }
@@ -103,6 +114,7 @@ export class AnalysisOrchestrator {
    * Gets the list of excluded directories
    * @returns Array of excluded directory paths
    */
+  // eslint-disable-next-line class-methods-use-this
   getExcludedDirectories(): string[] {
     return getExcludedDirectories();
   }
@@ -119,37 +131,43 @@ export class AnalysisOrchestrator {
    * Analyzes user files in configured directories
    * @returns Promise resolving to array of user file items
    */
-  async analyzeUserFiles(): Promise<import('../../types/analysis-types').FileItem[]> {
+  async analyzeUserFiles(): Promise<
+    import('../../types/analysis-types').FileItem[]
+  > {
     if (!this.isInitialized || !this.analysisLimits) {
       throw new Error('Analysis orchestrator not initialized');
     }
 
     const userDirs = getUserDirectories();
-    return await scanDirectories(userDirs, this.analysisLimits);
+    return scanDirectories(userDirs, this.analysisLimits);
   }
 
   /**
    * Analyzes installed applications
    * @returns Promise resolving to array of application file items
    */
-  async analyzeApplications(): Promise<import('../../types/analysis-types').FileItem[]> {
+  async analyzeApplications(): Promise<
+    import('../../types/analysis-types').FileItem[]
+  > {
     if (!this.isInitialized || !this.analysisLimits) {
       throw new Error('Analysis orchestrator not initialized');
     }
 
-    return await analyzeApplications(this.analysisLimits);
+    return analyzeApplications(this.analysisLimits);
   }
 
   /**
    * Analyzes system configuration files
    * @returns Promise resolving to array of configuration file items
    */
-  async analyzeConfigurations(): Promise<import('../../types/analysis-types').FileItem[]> {
+  async analyzeConfigurations(): Promise<
+    import('../../types/analysis-types').FileItem[]
+  > {
     if (!this.isInitialized || !this.analysisLimits) {
       throw new Error('Analysis orchestrator not initialized');
     }
 
-    return await analyzeConfigurations(this.analysisLimits);
+    return analyzeConfigurations(this.analysisLimits);
   }
 
   /**
@@ -162,23 +180,27 @@ export class AnalysisOrchestrator {
     }
 
     const startTime = Date.now();
-    
+
     try {
       // Reset counters for new analysis
       resetProgressCounter();
       resetFileCounter();
 
       // Perform all analysis tasks concurrently
-      const [filesResult, appsResult, configurationsResult] = await Promise.allSettled([
-        this.analyzeUserFiles(),
-        this.analyzeApplications(),
-        this.analyzeConfigurations(),
-      ]);
+      const [filesResult, appsResult, configurationsResult] =
+        await Promise.allSettled([
+          this.analyzeUserFiles(),
+          this.analyzeApplications(),
+          this.analyzeConfigurations(),
+        ]);
 
       // Extract results, defaulting to empty arrays on failure
       const files = filesResult.status === 'fulfilled' ? filesResult.value : [];
       const apps = appsResult.status === 'fulfilled' ? appsResult.value : [];
-      const configurations = configurationsResult.status === 'fulfilled' ? configurationsResult.value : [];
+      const configurations =
+        configurationsResult.status === 'fulfilled'
+          ? configurationsResult.value
+          : [];
 
       // Log any failures
       if (filesResult.status === 'rejected') {
@@ -188,7 +210,10 @@ export class AnalysisOrchestrator {
         log.error('Applications analysis failed:', appsResult.reason);
       }
       if (configurationsResult.status === 'rejected') {
-        log.error('Configurations analysis failed:', configurationsResult.reason);
+        log.error(
+          'Configurations analysis failed:',
+          configurationsResult.reason,
+        );
       }
 
       const result: SystemAnalysisResult = {
@@ -200,7 +225,7 @@ export class AnalysisOrchestrator {
       const endTime = Date.now();
       const duration = (endTime - startTime) / 1000;
       const totalItems = files.length + apps.length + configurations.length;
-      
+
       log.info(
         `Analysis completed: ${totalItems} items in ${duration.toFixed(2)}s`,
       );
@@ -208,6 +233,12 @@ export class AnalysisOrchestrator {
       return result;
     } catch (error) {
       log.error('Complete analysis failed:', error);
+      // Ensure cleanup on error
+      try {
+        this.cleanup();
+      } catch (cleanupError) {
+        log.error('Error during cleanup after analysis failure:', cleanupError);
+      }
       throw error;
     }
   }
@@ -267,7 +298,7 @@ export class AnalysisOrchestrator {
 
       const endTime = Date.now();
       const duration = (endTime - startTime) / 1000;
-      
+
       log.info(
         `Selective analysis completed for [${types.join(', ')}] in ${duration.toFixed(2)}s`,
       );
@@ -283,10 +314,23 @@ export class AnalysisOrchestrator {
    * Resets the orchestrator state for a new analysis session
    */
   reset(): void {
-    clearProgressCallback();
-    resetProgressCounter();
-    resetFileCounter();
-    this.isInitialized = false;
-    this.analysisLimits = null;
+    try {
+      clearProgressCallback();
+      resetProgressCounter();
+      cleanupFileUtils();
+      cleanupExclusionManager();
+      this.isInitialized = false;
+      this.analysisLimits = null;
+      log.debug('Analysis orchestrator reset completed');
+    } catch (error) {
+      log.error('Error during orchestrator reset:', error);
+    }
   }
-} 
+
+  /**
+   * Cleanup method to be called when the orchestrator is no longer needed
+   */
+  cleanup(): void {
+    this.reset();
+  }
+}

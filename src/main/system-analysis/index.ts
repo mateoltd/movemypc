@@ -1,12 +1,12 @@
 /**
  * System Analysis Module Index
- * 
+ *
  * This file provides centralized access to all system analysis modules
  * for better organization and easier imports.
  */
 
 // Core orchestrator
-export { AnalysisOrchestrator } from './core/analysis-orchestrator';
+export { default as AnalysisOrchestrator } from './core/orchestrator';
 
 // Managers
 export {
@@ -18,7 +18,8 @@ export {
   getExcludedDirectories,
   shouldExcludePath,
   isPathExcluded,
-} from './managers/exclusion-manager';
+  cleanupExclusionManager,
+} from './managers/exclusion';
 
 export {
   setProgressCallback,
@@ -29,14 +30,14 @@ export {
   sendProgress,
   getProgressUpdateCounter,
   incrementProgressCounter,
-} from './managers/progress-manager';
+} from './managers/manager';
 
 // Processors
 export {
   processConcurrentOperations,
   processBatch,
   processWithControlledConcurrency,
-} from './processors/concurrent-processor';
+} from './processors/concurrent';
 
 // Utilities
 export {
@@ -49,16 +50,35 @@ export {
   getFileCounter,
   isExecutableFile,
   formatFileSize,
+  cleanupFileUtils,
   readdir,
   stat,
   access,
 } from './utils/file-utils';
 
-// Analyzers
 export {
-  scanDirectory,
-  scanDirectories,
-} from './analyzers/directory-scanner';
+  withRetry,
+  safeExecute,
+  createCircuitBreaker,
+  withErrorRecovery,
+  CircuitBreaker,
+  RetryOptions,
+  CircuitBreakerOptions,
+} from './utils/error-recovery';
+
+export {
+  logError,
+  logOperationStart,
+  logOperationSuccess,
+  logOperationRetry,
+  logPerformanceMetrics,
+  logSystemResources,
+  LogContext,
+  ErrorSeverity,
+} from './utils/logging';
+
+// Analyzers
+export { scanDirectory, scanDirectories } from './analyzers/directory-scanner';
 
 export {
   analyzeApplications,
@@ -71,7 +91,6 @@ export {
   getConfigurationPatterns,
 } from './analyzers/configurations-scanner';
 
-// Re-export types for convenience
 export type {
   FileItem,
   AnalysisProgress,
@@ -79,4 +98,4 @@ export type {
   AnalysisLimits,
   AnalysisWarning,
   ExclusionManager,
-} from '../types/analysis-types'; 
+} from '../types/analysis-types';

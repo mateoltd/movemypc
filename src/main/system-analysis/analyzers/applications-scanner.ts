@@ -1,20 +1,20 @@
 import { join } from 'path';
 import log from 'electron-log';
-import { 
-  generateFileId, 
-  getFileExtension, 
-  isDirectoryAccessible, 
-  safeReaddir, 
+import {
+  generateFileId,
+  getFileExtension,
+  isDirectoryAccessible,
+  safeReaddir,
   safeStat,
-  isExecutableFile
+  isExecutableFile,
 } from '../utils/file-utils';
-import { sendProgress } from '../managers/progress-manager';
-import { processConcurrentOperations, processBatch } from '../processors/concurrent-processor';
+import { sendProgress } from '../managers/manager';
+import {
+  processConcurrentOperations,
+  processBatch,
+} from '../processors/concurrent';
 import { getApplicationDirectories } from '../../config';
-import { 
-  FileItem, 
-  AnalysisLimits 
-} from '../../types/analysis-types';
+import { FileItem, AnalysisLimits } from '../../types/analysis-types';
 
 /**
  * Processes an application directory entry to identify executable applications
@@ -47,8 +47,30 @@ const processAppEntry = async (
           modifiedDate: stats.mtime,
         };
       }
-    } catch (error) {
-      log.warn(`Failed to check executable files in ${fullPath}:`, error);
+    } catch (error: any) {
+      const errorCode = error.code || 'UNKNOWN';
+      const errorMessage = error.message || 'Unknown error';
+
+      switch (errorCode) {
+        case 'EACCES':
+          log.warn(
+            `Permission denied checking executable files in: ${fullPath}`,
+          );
+          break;
+        case 'ENOENT':
+          log.debug(`Application directory no longer exists: ${fullPath}`);
+          break;
+        case 'EMFILE':
+        case 'ENFILE':
+          log.error(
+            `Too many open files when checking executable files in: ${fullPath}`,
+          );
+          break;
+        default:
+          log.warn(
+            `Failed to check executable files in ${fullPath} (${errorCode}): ${errorMessage}`,
+          );
+      }
     }
   } else if (isExecutableFile(entry)) {
     return {
@@ -101,11 +123,17 @@ const processAppDir = async (
   // Limit entries to avoid processing too many files
   const limitedEntries = entries.slice(0, 100);
 
-  const processAppEntryWithDir = async (entry: string): Promise<FileItem | null> => {
+  const processAppEntryWithDir = async (
+    entry: string,
+  ): Promise<FileItem | null> => {
     return processAppEntry(entry, appDir);
   };
 
-  const processedApps = await processBatch(limitedEntries, processAppEntryWithDir, analysisLimits);
+  const processedApps = await processBatch(
+    limitedEntries,
+    processAppEntryWithDir,
+    analysisLimits,
+  );
   dirApps.push(...processedApps.filter((app) => app !== null));
 
   return dirApps;
@@ -122,15 +150,16 @@ export const analyzeApplications = async (
   const appDirs = getApplicationDirectories();
   const apps: FileItem[] = [];
 
-  sendProgress({ 
-    phase: 'apps', 
-    current: 0, 
-    total: appDirs.length 
+  sendProgress({
+    phase: 'apps',
+    current: 0,
+    total: appDirs.length,
   });
 
   const appDirResults = await processConcurrentOperations(
     appDirs.map((dir, index) => ({ dir, index })),
-    async ({ dir, index }) => processAppDir(dir, index, appDirs.length, analysisLimits),
+    async ({ dir, index }) =>
+      processAppDir(dir, index, appDirs.length, analysisLimits),
     analysisLimits.concurrencyLevel,
   );
 
@@ -157,18 +186,18 @@ export const scanPortableApps = async (
 
   const scanPortableDir = async (dir: string): Promise<FileItem[]> => {
     const apps: FileItem[] = [];
-    
+
     const isAccessible = await isDirectoryAccessible(dir);
     if (!isAccessible) {
       return apps;
     }
 
     const entries = await safeReaddir(dir);
-    
+
     for (const entry of entries) {
       const fullPath = join(dir, entry);
       const stats = await safeStat(fullPath);
-      
+
       if (stats && stats.isFile() && isExecutableFile(entry)) {
         apps.push({
           id: generateFileId(fullPath),
@@ -181,7 +210,7 @@ export const scanPortableApps = async (
         });
       }
     }
-    
+
     return apps;
   };
 
@@ -198,4 +227,4 @@ export const scanPortableApps = async (
   });
 
   return portableApps;
-}; 
+};
