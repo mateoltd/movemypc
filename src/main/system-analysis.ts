@@ -101,6 +101,35 @@ const updateProgress = (
   }
 };
 
+const processConcurrentOperations = async <T, R>(
+  items: T[],
+  processor: (item: T) => Promise<R>,
+  concurrency: number,
+): Promise<R[]> => {
+  const results: R[] = [];
+
+  // Process items in groups based on concurrency level
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += concurrency) {
+    chunks.push(items.slice(i, i + concurrency));
+  }
+
+  // Process each chunk sequentially, but items within each chunk concurrently
+  await chunks.reduce(async (previousPromise, chunk) => {
+    await previousPromise;
+    const chunkPromises = chunk.map(processor);
+    const chunkResults = await Promise.allSettled(chunkPromises);
+
+    chunkResults.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        results.push(result.value);
+      }
+    });
+  }, Promise.resolve());
+
+  return results;
+};
+
 const processBatch = async <T>(
   items: T[],
   processor: (item: T) => Promise<any>,
@@ -113,13 +142,51 @@ const processBatch = async <T>(
     batches.push(items.slice(i, i + analysisLimits.batchSize));
   }
 
-  // Process batches sequentially to avoid overwhelming the system
-  for (const batch of batches) {
-    const batchResults = await Promise.allSettled(batch.map(processor));
-    const successfulResults = batchResults
-      .filter((result) => result.status === 'fulfilled' && result.value)
-      .map((result) => (result as PromiseFulfilledResult<any>).value);
-    results.push(...successfulResults);
+  // Process batches based on device concurrency level
+  if (analysisLimits.concurrencyLevel === 1) {
+    // Sequential processing for low-end devices
+    await batches.reduce(async (previousPromise, batch) => {
+      await previousPromise;
+      const batchResults = await Promise.allSettled(batch.map(processor));
+      const successfulResults = batchResults
+        .filter((result) => result.status === 'fulfilled' && result.value)
+        .map((result) => (result as PromiseFulfilledResult<any>).value);
+      results.push(...successfulResults);
+    }, Promise.resolve());
+  } else {
+    // Concurrent processing for higher-end devices
+    const processConcurrentBatches = async (
+      batchGroup: T[][],
+    ): Promise<any[]> => {
+      const batchPromises = batchGroup.map(async (batch) => {
+        const batchResults = await Promise.allSettled(batch.map(processor));
+        return batchResults
+          .filter((result) => result.status === 'fulfilled' && result.value)
+          .map((result) => (result as PromiseFulfilledResult<any>).value);
+      });
+
+      const batchResults = await Promise.allSettled(batchPromises);
+      const allResults: any[] = [];
+      batchResults.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          allResults.push(...result.value);
+        }
+      });
+      return allResults;
+    };
+
+    // Process batches in groups based on concurrency level
+    const batchGroups: T[][][] = [];
+    for (let i = 0; i < batches.length; i += analysisLimits.concurrencyLevel) {
+      batchGroups.push(batches.slice(i, i + analysisLimits.concurrencyLevel));
+    }
+
+    // Process each batch group sequentially
+    await batchGroups.reduce(async (previousPromise, batchGroup) => {
+      await previousPromise;
+      const groupResults = await processConcurrentBatches(batchGroup);
+      results.push(...groupResults);
+    }, Promise.resolve());
   }
 
   return results;
@@ -249,28 +316,31 @@ const analyzeUserFiles = async (): Promise<FileItem[]> => {
   const allFiles: FileItem[] = [];
   const processedPaths = new Set<string>();
 
-  const processDirResults = await Promise.allSettled(
-    userDirs.map(async (dir) => {
-      try {
-        await access(dir, fs.constants.R_OK);
+  const processDirOperation = async (dir: string): Promise<FileItem[]> => {
+    try {
+      await access(dir, fs.constants.R_OK);
 
-        const normalizedPath = dir.toLowerCase();
-        if (processedPaths.has(normalizedPath)) {
-          return [];
-        }
-        processedPaths.add(normalizedPath);
-
-        return await scanDirectory(dir);
-      } catch {
+      const normalizedPath = dir.toLowerCase();
+      if (processedPaths.has(normalizedPath)) {
         return [];
       }
-    }),
+      processedPaths.add(normalizedPath);
+
+      return await scanDirectory(dir);
+    } catch {
+      return [];
+    }
+  };
+
+  // Use concurrent processing based on device capabilities
+  const processDirResults = await processConcurrentOperations(
+    userDirs,
+    processDirOperation,
+    analysisLimits.concurrencyLevel,
   );
 
   processDirResults.forEach((result) => {
-    if (result.status === 'fulfilled') {
-      allFiles.push(...result.value);
-    }
+    allFiles.push(...result);
   });
 
   const uniqueFiles = new Map<string, FileItem>();
@@ -376,14 +446,14 @@ const analyzeApplications = async (): Promise<FileItem[]> => {
     return dirApps;
   };
 
-  const appDirResults = await Promise.allSettled(
-    appDirs.map((dir, index) => processAppDir(dir, index)),
+  const appDirResults = await processConcurrentOperations(
+    appDirs.map((dir, index) => ({ dir, index })),
+    async ({ dir, index }) => processAppDir(dir, index),
+    analysisLimits.concurrencyLevel,
   );
 
   appDirResults.forEach((result) => {
-    if (result.status === 'fulfilled') {
-      apps.push(...result.value);
-    }
+    apps.push(...result);
   });
 
   return apps;
@@ -443,14 +513,14 @@ const analyzeConfigurations = async (): Promise<FileItem[]> => {
     return dirConfigs;
   };
 
-  const configDirResults = await Promise.allSettled(
-    configDirs.map((dir, index) => processConfigDir(dir, index)),
+  const configDirResults = await processConcurrentOperations(
+    configDirs.map((dir, index) => ({ dir, index })),
+    async ({ dir, index }) => processConfigDir(dir, index),
+    analysisLimits.concurrencyLevel,
   );
 
   configDirResults.forEach((result) => {
-    if (result.status === 'fulfilled') {
-      configs.push(...result.value);
-    }
+    configs.push(...result);
   });
 
   return configs;
@@ -468,7 +538,7 @@ export const analyzeSystem = async (): Promise<SystemAnalysisResult> => {
     `Device specs: ${deviceSpecs.cpuCores} cores, ${deviceSpecs.availableMemoryGB.toFixed(1)}GB RAM, ${deviceSpecs.diskSpeedTier} disk`,
   );
   log.info(
-    `Analysis limits: warn at ${analysisLimits.warningDirectorySize} files/dir, batch size ${analysisLimits.batchSize}`,
+    `Analysis limits: warn at ${analysisLimits.warningDirectorySize} files/dir, batch size ${analysisLimits.batchSize}, concurrency level ${analysisLimits.concurrencyLevel}`,
   );
 
   const startTime = Date.now();

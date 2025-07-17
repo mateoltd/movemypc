@@ -43,7 +43,6 @@ interface InterfaceProps {
   peers: Peer[];
   onAnalyze: () => void;
   onConnect: (peer: Peer) => void;
-  onTransfer: () => void;
   onRetryDiscovery: () => void;
   analysis: any;
   isTransferring: boolean;
@@ -66,7 +65,6 @@ function Interface({
   peers,
   onAnalyze,
   onConnect,
-  onTransfer,
   onRetryDiscovery,
   analysis,
   isTransferring,
@@ -142,19 +140,11 @@ function Interface({
   );
 
   const destinationActions = connectedPeer ? (
-    <>
-      <button
-        type="button"
-        className="btn btn-primary"
-        onClick={onTransfer}
-        disabled={!analysis || isTransferring}
-      >
-        {isTransferring ? 'Transferring...' : 'Select Files to Transfer'}
-      </button>
-      <p className="transfer-status">
-        {analysis ? 'Ready to transfer' : 'Run system analysis first'}
-      </p>
-    </>
+    <p className="transfer-status">
+      {analysis
+        ? 'Ready to transfer - File selection opened automatically'
+        : 'Run system analysis to start file selection'}
+    </p>
   ) : null;
 
   return (

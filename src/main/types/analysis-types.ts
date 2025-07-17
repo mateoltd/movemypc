@@ -51,6 +51,7 @@ export interface AnalysisLimits {
   largeSizeThreshold: number;
   warningDirectorySize: number;
   slowDirectoryThreshold: number;
+  concurrencyLevel: number;
 }
 
 export interface ExclusionManager {
