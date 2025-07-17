@@ -114,17 +114,13 @@ const processBatch = async <T>(
   }
 
   // Process batches sequentially to avoid overwhelming the system
-  const batchPromises = batches.map(async (batch) => {
+  for (const batch of batches) {
     const batchResults = await Promise.allSettled(batch.map(processor));
-    return batchResults
+    const successfulResults = batchResults
       .filter((result) => result.status === 'fulfilled' && result.value)
       .map((result) => (result as PromiseFulfilledResult<any>).value);
-  });
-
-  const allBatchResults = await Promise.all(batchPromises);
-  allBatchResults.forEach((batchResult) => {
-    results.push(...batchResult);
-  });
+    results.push(...successfulResults);
+  }
 
   return results;
 };
