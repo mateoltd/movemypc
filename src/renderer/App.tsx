@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import log from 'electron-log';
 import Interface from './components/Home/Interface';
 import WarningNotification from './components/Common/WarningNotification';
 import './App.css';
@@ -45,7 +46,6 @@ export default function App() {
     configurations: [],
   });
   const [peers, setPeers] = useState<Peer[]>([]);
-  const [timeoutExpired, setTimeoutExpired] = useState(false);
   const [connectedPeer, setConnectedPeer] = useState<Peer | null>(null);
   const [isTransferring, setIsTransferring] = useState(false);
   const [localDeviceInfo, setLocalDeviceInfo] =
@@ -59,7 +59,6 @@ export default function App() {
   );
 
   useEffect(() => {
-    const timer = setTimeout(() => setTimeoutExpired(true), 10000);
 
     window.electronAPI
       .getLocalDeviceInfo()
@@ -68,7 +67,7 @@ export default function App() {
         return info;
       })
       .catch((error) => {
-        console.error('Failed to get local device info:', error);
+        log.error('Failed to get local device info:', error);
       });
 
     window.electronAPI.onConnectionStatus((status: string) => {
@@ -79,12 +78,12 @@ export default function App() {
     });
 
     window.electronAPI.onFileCopyError((error: any) => {
-      console.error(`Error copying file: ${error.fileName}`, error.error);
+      log.error(`Error copying file: ${error.fileName}`, error.error);
       setIsTransferring(false);
     });
 
     window.electronAPI.onNetworkError((error: string) => {
-      console.error('Network error:', error);
+      log.error('Network error:', error);
       setIsTransferring(false);
     });
 
@@ -121,12 +120,12 @@ export default function App() {
     });
 
     window.electronAPI.onAnalysisError((error: string) => {
-      console.error('Analysis error:', error);
+      log.error('Analysis error:', error);
       setIsAnalyzing(false);
       setAnalysisProgress(null);
     });
 
-    return () => clearTimeout(timer);
+    return () => {};
   }, []);
 
   const handleAnalyze = async () => {
@@ -136,7 +135,7 @@ export default function App() {
       await window.electronAPI.analyzeSystem();
       // Analysis result will be handled by the onAnalysisComplete event
     } catch (error) {
-      console.error('Analysis failed:', error);
+      log.error('Analysis failed:', error);
       setIsAnalyzing(false);
       setAnalysisProgress(null);
     }
@@ -174,7 +173,6 @@ export default function App() {
   };
 
   const handleRetryDiscovery = () => {
-    setTimeoutExpired(false);
     setPeers([]);
     window.electronAPI.flushDiscovery();
   };
@@ -201,7 +199,6 @@ export default function App() {
             connectionStatus={connectionStatus}
             connectedPeer={connectedPeer}
             peers={peers}
-            timeoutExpired={timeoutExpired}
             onAnalyze={handleAnalyze}
             onConnect={handleConnect}
             onTransfer={handleOpenFileSelection}
