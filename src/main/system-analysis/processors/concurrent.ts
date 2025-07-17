@@ -208,11 +208,12 @@ export const processWithControlledConcurrency = async <T, R>(
   };
 
   try {
-    // Process items with controlled concurrency
-    for (let i = 0; i < items.length; i += concurrency) {
-      const batch = items.slice(i, i + concurrency);
-      await Promise.all(batch.map(processItem));
-    }
+    // Process items with controlled concurrency using the concurrent operations helper
+    await processConcurrentOperations(
+      items,
+      processItem,
+      concurrency,
+    );
   } catch (error) {
     // Cleanup any remaining active promises
     log.error(
