@@ -57,6 +57,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   transferFiles: (selectedItems: any) =>
     ipcRenderer.invoke('transfer-files', selectedItems),
   flushDiscovery: () => ipcRenderer.invoke('flush-discovery'),
+  addDirectoryExclusion: (path: string) =>
+    ipcRenderer.invoke('add-directory-exclusion', path),
+  removeDirectoryExclusion: (path: string) =>
+    ipcRenderer.invoke('remove-directory-exclusion', path),
+  getExcludedDirectories: () =>
+    ipcRenderer.invoke('get-excluded-directories'),
 });
 
 export type ElectronHandler = typeof electronHandler;

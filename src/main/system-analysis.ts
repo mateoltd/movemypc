@@ -1,91 +1,58 @@
-import { homedir } from 'os';
-import { join, extname, dirname, basename } from 'path';
+import { extname, dirname, basename } from 'path';
 import * as fs from 'fs';
 import { promisify } from 'util';
+import { EXCLUDE_PATTERNS, CONFIG_PATTERNS, getUserDirectories, getApplicationDirectories, getConfigurationDirectories } from './config';
+import { detectDeviceSpecs, calculateOptimalLimits } from './utils';
+import { FileItem, AnalysisProgress, SystemAnalysisResult, AnalysisLimits, AnalysisWarning, ExclusionManager } from './types/analysis-types';
 
 const readdir = promisify(fs.readdir);
 const stat = promisify(fs.stat);
 const access = promisify(fs.access);
 
-interface FileItem {
-  id: string;
-  name: string;
-  path: string;
-  type: 'file' | 'folder';
-  size?: number;
-  children?: FileItem[];
-  parent?: string;
-  modifiedDate?: Date;
-  extension?: string;
-}
-
-interface AnalysisProgress {
-  phase: 'files' | 'apps' | 'configurations';
-  current: number;
-  total: number;
-  currentPath?: string;
-}
-
-interface SystemAnalysisResult {
-  files: FileItem[];
-  apps: FileItem[];
-  configurations: FileItem[];
-}
-
-// Configuration for analysis
-const ANALYSIS_CONFIG = {
-  maxDepth: 5,
-  excludePatterns: [
-    /node_modules/,
-    /\.git/,
-    /AppData\/Local\/Temp/,
-    /System Volume Information/,
-    /\$Recycle\.Bin/,
-    /Windows\/System32/,
-    /Program Files\/Windows/,
-    /\.tmp$/,
-    /\.temp$/,
-    /cache/i,
-    /logs?/i,
-  ],
-  fileSizeLimit: 1024 * 1024 * 1024, // 1GB
-  maxFilesPerDirectory: 1000,
-  batchSize: 100, // Process files in batches
-  progressUpdateInterval: 50, // Update progress every N files
-};
-
-// Common application directories
-const APP_DIRECTORIES = [
-  join(process.env.PROGRAMFILES || 'C:\\Program Files'),
-  join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)'),
-  join(homedir(), 'AppData', 'Local'),
-  join(homedir(), 'AppData', 'Roaming'),
-];
-
-// Configuration file patterns
-const CONFIG_PATTERNS = [
-  { pattern: /\.config$/, type: 'Application Config' },
-  { pattern: /\.ini$/, type: 'INI File' },
-  { pattern: /\.json$/, type: 'JSON Config' },
-  { pattern: /\.xml$/, type: 'XML Config' },
-  { pattern: /\.yaml$/, type: 'YAML Config' },
-  { pattern: /\.yml$/, type: 'YAML Config' },
-  { pattern: /\.toml$/, type: 'TOML Config' },
-  { pattern: /\.properties$/, type: 'Properties File' },
-  { pattern: /\.conf$/, type: 'Configuration File' },
-  { pattern: /\.cfg$/, type: 'Configuration File' },
-];
-
 let progressCallback: ((progress: AnalysisProgress) => void) | null = null;
 let fileCounter = 0;
 let progressUpdateCounter = 0;
+let analysisLimits: AnalysisLimits;
+let exclusionManager: ExclusionManager;
+
+const createExclusionManager = (): ExclusionManager => {
+  const excludedPaths = new Set<string>();
+  
+  return {
+    excludedPaths,
+    addExclusion: (path: string) => excludedPaths.add(path.toLowerCase()),
+    removeExclusion: (path: string) => excludedPaths.delete(path.toLowerCase()),
+    isExcluded: (path: string) => {
+      const normalizedPath = path.toLowerCase();
+      return Array.from(excludedPaths).some(excluded => 
+        normalizedPath.startsWith(excluded) || excluded.startsWith(normalizedPath)
+      );
+    }
+  };
+};
 
 export const setProgressCallback = (callback: (progress: AnalysisProgress) => void) => {
   progressCallback = callback;
 };
 
+export const addDirectoryExclusion = (path: string) => {
+  if (exclusionManager) {
+    exclusionManager.addExclusion(path);
+  }
+};
+
+export const removeDirectoryExclusion = (path: string) => {
+  if (exclusionManager) {
+    exclusionManager.removeExclusion(path);
+  }
+};
+
+export const getExcludedDirectories = (): string[] => {
+  return exclusionManager ? Array.from(exclusionManager.excludedPaths) : [];
+};
+
 const shouldExcludePath = (path: string): boolean => {
-  return ANALYSIS_CONFIG.excludePatterns.some(pattern => pattern.test(path));
+  return EXCLUDE_PATTERNS.some(pattern => pattern.test(path));
 };
 
 const generateFileId = (path: string): string => {
@@ -99,11 +66,11 @@ const getFileExtension = (filename: string): string => {
 
 const updateProgress = (phase: 'files' | 'apps' | 'configurations', currentPath?: string) => {
   progressUpdateCounter++;
-  if (progressCallback && progressUpdateCounter % ANALYSIS_CONFIG.progressUpdateInterval === 0) {
+  if (progressCallback && progressUpdateCounter % analysisLimits.progressUpdateInterval === 0) {
     progressCallback({
       phase,
       current: fileCounter,
-      total: -1, // Unknown total
+      total: -1,
       currentPath
     });
   }
@@ -112,8 +79,8 @@ const updateProgress = (phase: 'files' | 'apps' | 'configurations', currentPath?
 const processBatch = async <T>(items: T[], processor: (item: T) => Promise<any>): Promise<any[]> => {
   const results: any[] = [];
   
-  for (let i = 0; i < items.length; i += ANALYSIS_CONFIG.batchSize) {
-    const batch = items.slice(i, i + ANALYSIS_CONFIG.batchSize);
+  for (let i = 0; i < items.length; i += analysisLimits.batchSize) {
+    const batch = items.slice(i, i + analysisLimits.batchSize);
     const batchResults = await Promise.allSettled(batch.map(processor));
     
     batchResults.forEach(result => {
@@ -122,7 +89,6 @@ const processBatch = async <T>(items: T[], processor: (item: T) => Promise<any>)
       }
     });
     
-    // Allow other operations to run between batches
     await new Promise(resolve => setImmediate(resolve));
   }
   
@@ -134,33 +100,48 @@ const scanDirectory = async (
   depth: number = 0,
   parentId?: string
 ): Promise<FileItem[]> => {
-  if (depth > ANALYSIS_CONFIG.maxDepth || shouldExcludePath(dirPath)) {
+  if (depth > analysisLimits.maxDepth || shouldExcludePath(dirPath)) {
     return [];
   }
 
   const items: FileItem[] = [];
   
   try {
-    // Check if we have read access to the directory
     await access(dirPath, fs.constants.R_OK);
     
     let entries: string[] = [];
     try {
       entries = await readdir(dirPath);
     } catch (readdirError) {
-      console.warn(`Cannot read directory ${dirPath}:`, readdirError);
       return [];
     }
     
-    if (entries.length > ANALYSIS_CONFIG.maxFilesPerDirectory) {
-      console.warn(`Directory ${dirPath} has too many files (${entries.length}), limiting to ${ANALYSIS_CONFIG.maxFilesPerDirectory}`);
+    if (exclusionManager.isExcluded(dirPath)) {
+      return [];
     }
 
-    const limitedEntries = entries.slice(0, ANALYSIS_CONFIG.maxFilesPerDirectory);
+    if (entries.length > analysisLimits.warningDirectorySize) {
+      const warning: AnalysisWarning = {
+        type: 'large_directory',
+        path: dirPath,
+        details: `Directory contains ${entries.length} files`,
+        fileCount: entries.length,
+        canExclude: true
+      };
+      
+      if (progressCallback) {
+        progressCallback({
+          phase: 'files',
+          current: fileCounter,
+          total: -1,
+          currentPath: dirPath,
+          warning
+        });
+      }
+    }
     
-    // Process entries in batches to avoid memory issues
     const processEntry = async (entry: string): Promise<FileItem | null> => {
-      const fullPath = join(dirPath, entry);
+      const fullPath = dirPath + '\\' + entry;
       
       if (shouldExcludePath(fullPath)) {
         return null;
@@ -171,7 +152,6 @@ const scanDirectory = async (
         try {
           stats = await stat(fullPath);
         } catch (statError) {
-          console.warn(`Cannot stat ${fullPath}:`, statError);
           return null;
         }
 
@@ -189,20 +169,17 @@ const scanDirectory = async (
             children: []
           };
 
-          // Recursively scan subdirectory with error handling
           try {
             const children = await scanDirectory(fullPath, depth + 1, id);
             folderItem.children = children;
           } catch (recursiveError) {
-            console.warn(`Error scanning subdirectory ${fullPath}:`, recursiveError);
             folderItem.children = [];
           }
           
           return folderItem;
         } else if (stats.isFile()) {
-          if (stats.size > ANALYSIS_CONFIG.fileSizeLimit) {
-            console.warn(`File ${fullPath} is too large (${stats.size} bytes), skipping`);
-            return null;
+          if (stats.size > analysisLimits.largeSizeThreshold) {
+            console.info(`Large file: ${fullPath} (${(stats.size / (1024 ** 3)).toFixed(2)} GB)`);
           }
 
           const fileItem: FileItem = {
@@ -219,43 +196,40 @@ const scanDirectory = async (
           return fileItem;
         }
       } catch (itemError) {
-        console.warn(`Error processing item ${fullPath}:`, itemError);
         return null;
       }
       
       return null;
     };
 
-    const processedItems = await processBatch(limitedEntries, processEntry);
+    const processedItems = await processBatch(entries, processEntry);
     items.push(...processedItems.filter(item => item !== null));
     
   } catch (accessError) {
-    console.warn(`Cannot access directory ${dirPath}:`, accessError);
+    // Silent fail for inaccessible directories
   }
 
   return items;
 };
 
 const analyzeUserFiles = async (): Promise<FileItem[]> => {
-  const userDirs = [
-    join(homedir(), 'Documents'),
-    join(homedir(), 'Pictures'),
-    join(homedir(), 'Videos'),
-    join(homedir(), 'Music'),
-    join(homedir(), 'Downloads'),
-    join(homedir(), 'Desktop'),
-  ];
-
+  const userDirs = getUserDirectories();
   const allFiles: FileItem[] = [];
+  const processedPaths = new Set<string>();
   
-  // Process directories in parallel for better performance
   const processDirResults = await Promise.allSettled(
     userDirs.map(async (dir) => {
       try {
         await access(dir, fs.constants.R_OK);
+        
+        const normalizedPath = dir.toLowerCase();
+        if (processedPaths.has(normalizedPath)) {
+          return [];
+        }
+        processedPaths.add(normalizedPath);
+        
         return await scanDirectory(dir);
       } catch (error) {
-        console.warn(`Cannot access user directory ${dir}:`, error);
         return [];
       }
     })
@@ -267,14 +241,22 @@ const analyzeUserFiles = async (): Promise<FileItem[]> => {
     }
   });
 
-  return allFiles;
+  const uniqueFiles = new Map<string, FileItem>();
+  allFiles.forEach(file => {
+    if (!uniqueFiles.has(file.path)) {
+      uniqueFiles.set(file.path, file);
+    }
+  });
+
+  return Array.from(uniqueFiles.values());
 };
 
 const analyzeApplications = async (): Promise<FileItem[]> => {
+  const appDirs = getApplicationDirectories();
   const apps: FileItem[] = [];
   
   if (progressCallback) {
-    progressCallback({ phase: 'apps', current: 0, total: APP_DIRECTORIES.length });
+    progressCallback({ phase: 'apps', current: 0, total: appDirs.length });
   }
 
   const processAppDir = async (appDir: string, index: number): Promise<FileItem[]> => {
@@ -284,7 +266,7 @@ const analyzeApplications = async (): Promise<FileItem[]> => {
       progressCallback({ 
         phase: 'apps', 
         current: index, 
-        total: APP_DIRECTORIES.length,
+        total: appDirs.length,
         currentPath: appDir 
       });
     }
@@ -296,26 +278,22 @@ const analyzeApplications = async (): Promise<FileItem[]> => {
       try {
         entries = await readdir(appDir);
       } catch (readdirError) {
-        console.warn(`Cannot read app directory ${appDir}:`, readdirError);
         return dirApps;
       }
       
-      // Process app entries in batches
       const processAppEntry = async (entry: string): Promise<FileItem | null> => {
-        const fullPath = join(appDir, entry);
+        const fullPath = appDir + '\\' + entry;
         
         try {
           let stats;
           try {
             stats = await stat(fullPath);
           } catch (statError) {
-            console.warn(`Cannot stat app ${fullPath}:`, statError);
             return null;
           }
           
           if (stats.isDirectory()) {
             try {
-              // Look for executable files in the app directory
               const appFiles = await readdir(fullPath);
               const hasExecutable = appFiles.some(file => 
                 file.endsWith('.exe') || file.endsWith('.msi')
@@ -331,7 +309,7 @@ const analyzeApplications = async (): Promise<FileItem[]> => {
                 };
               }
             } catch (appDirError) {
-              console.warn(`Cannot read app directory contents ${fullPath}:`, appDirError);
+              // Silent fail
             }
           } else if (entry.endsWith('.exe') || entry.endsWith('.msi')) {
             return {
@@ -345,26 +323,25 @@ const analyzeApplications = async (): Promise<FileItem[]> => {
             };
           }
         } catch (appError) {
-          console.warn(`Error processing app ${fullPath}:`, appError);
+          // Silent fail
         }
         
         return null;
       };
 
-      const limitedEntries = entries.slice(0, 100); // Limit to first 100 apps
+      const limitedEntries = entries.slice(0, 100);
       const processedApps = await processBatch(limitedEntries, processAppEntry);
       dirApps.push(...processedApps.filter(app => app !== null));
       
     } catch (accessError) {
-      console.warn(`Cannot access app directory ${appDir}:`, accessError);
+      // Silent fail
     }
 
     return dirApps;
   };
 
-  // Process app directories in parallel
   const appDirResults = await Promise.allSettled(
-    APP_DIRECTORIES.map((dir, index) => processAppDir(dir, index))
+    appDirs.map((dir, index) => processAppDir(dir, index))
   );
 
   appDirResults.forEach(result => {
@@ -377,15 +354,9 @@ const analyzeApplications = async (): Promise<FileItem[]> => {
 };
 
 const analyzeConfigurations = async (): Promise<FileItem[]> => {
+  const configDirs = getConfigurationDirectories();
   const configs: FileItem[] = [];
   
-  const configDirs = [
-    join(homedir(), 'AppData', 'Roaming'),
-    join(homedir(), 'AppData', 'Local'),
-    join(homedir(), '.config'),
-    join(homedir()),
-  ];
-
   if (progressCallback) {
     progressCallback({ phase: 'configurations', current: 0, total: configDirs.length });
   }
@@ -409,11 +380,9 @@ const analyzeConfigurations = async (): Promise<FileItem[]> => {
       try {
         files = await scanDirectory(configDir, 0);
       } catch (scanError) {
-        console.warn(`Error scanning config directory ${configDir}:`, scanError);
         return dirConfigs;
       }
       
-      // Filter for configuration files
       const configFiles = files.filter(file => {
         if (file.type === 'file') {
           return CONFIG_PATTERNS.some(pattern => 
@@ -425,13 +394,12 @@ const analyzeConfigurations = async (): Promise<FileItem[]> => {
       
       dirConfigs.push(...configFiles);
     } catch (accessError) {
-      console.warn(`Cannot access config directory ${configDir}:`, accessError);
+      // Silent fail
     }
 
     return dirConfigs;
   };
 
-  // Process config directories in parallel
   const configDirResults = await Promise.allSettled(
     configDirs.map((dir, index) => processConfigDir(dir, index))
   );
@@ -449,16 +417,20 @@ export const analyzeSystem = async (): Promise<SystemAnalysisResult> => {
   fileCounter = 0;
   progressUpdateCounter = 0;
   
+  const deviceSpecs = await detectDeviceSpecs();
+  analysisLimits = calculateOptimalLimits(deviceSpecs);
+  exclusionManager = createExclusionManager();
+  
+  console.log(`Device specs: ${deviceSpecs.cpuCores} cores, ${deviceSpecs.availableMemoryGB.toFixed(1)}GB RAM, ${deviceSpecs.diskSpeedTier} disk`);
+  console.log(`Analysis limits: warn at ${analysisLimits.warningDirectorySize} files/dir, batch size ${analysisLimits.batchSize}`);
+  
   const startTime = Date.now();
   
   try {
-    console.log('Starting comprehensive system analysis...');
-    
     let files: FileItem[] = [];
     let apps: FileItem[] = [];
     let configurations: FileItem[] = [];
     
-    // Run all analysis phases in parallel for better performance
     const [filesResult, appsResult, configurationsResult] = await Promise.allSettled([
       analyzeUserFiles(),
       analyzeApplications(),
@@ -467,23 +439,14 @@ export const analyzeSystem = async (): Promise<SystemAnalysisResult> => {
     
     if (filesResult.status === 'fulfilled') {
       files = filesResult.value;
-      console.log(`Found ${files.length} user files`);
-    } else {
-      console.error('Error analyzing user files:', filesResult.reason);
     }
     
     if (appsResult.status === 'fulfilled') {
       apps = appsResult.value;
-      console.log(`Found ${apps.length} applications`);
-    } else {
-      console.error('Error analyzing applications:', appsResult.reason);
     }
     
     if (configurationsResult.status === 'fulfilled') {
       configurations = configurationsResult.value;
-      console.log(`Found ${configurations.length} configuration files`);
-    } else {
-      console.error('Error analyzing configurations:', configurationsResult.reason);
     }
     
     const result = {
@@ -494,13 +457,11 @@ export const analyzeSystem = async (): Promise<SystemAnalysisResult> => {
     
     const endTime = Date.now();
     const duration = (endTime - startTime) / 1000;
-    console.log(`System analysis completed successfully in ${duration.toFixed(2)} seconds`);
-    console.log(`Total items processed: ${fileCounter}`);
+    console.log(`Analysis completed: ${fileCounter} items in ${duration.toFixed(2)}s`);
     
     return result;
   } catch (error) {
-    console.error('Critical error during system analysis:', error);
-    // Return partial results even on error
+    console.error('Analysis error:', error);
     return {
       files: [],
       apps: [],

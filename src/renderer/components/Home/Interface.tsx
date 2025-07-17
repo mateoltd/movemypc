@@ -20,11 +20,20 @@ interface SelectedItems {
   configurations: string[];
 }
 
+interface AnalysisWarning {
+  type: 'large_directory' | 'slow_directory' | 'permission_denied';
+  path: string;
+  details: string;
+  fileCount?: number;
+  canExclude: boolean;
+}
+
 interface AnalysisProgress {
   phase: 'files' | 'apps' | 'configurations';
   current: number;
   total: number;
   currentPath?: string;
+  warning?: AnalysisWarning;
 }
 
 interface InterfaceProps {
@@ -104,7 +113,11 @@ const Interface: React.FC<InterfaceProps> = ({
       {analysisProgress && (
         <div className="analysis-progress">
           <div className="progress-text">
-            {analysisProgress.currentPath && (
+            {analysisProgress.warning ? (
+              <small className="warning-text">
+                ⚠️ {analysisProgress.warning.details}
+              </small>
+            ) : analysisProgress.currentPath && (
               <small>Scanning: {analysisProgress.currentPath}</small>
             )}
           </div>

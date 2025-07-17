@@ -2,6 +2,7 @@
 @import './styles/components/Interface.css';
 @import './styles/components/FileManagement/FileManager.css';
 @import './styles/components/FileManagement/FileSelectionModal.css';
+@import './styles/components/WarningNotification.css';
 
 * {
   margin: 0;
@@ -72,6 +73,11 @@ body {
   font-family: monospace;
   color: #888;
   word-break: break-all;
+}
+
+.progress-text .warning-text {
+  color: var(--color-status-warning);
+  font-weight: 500;
 }
 
 /* Button states */

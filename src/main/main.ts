@@ -17,7 +17,7 @@ import { homedir, hostname, networkInterfaces } from 'os';
 import { join } from 'path';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
-import { analyzeSystem, setProgressCallback } from './system-analysis';
+import { analyzeSystem, setProgressCallback, addDirectoryExclusion, removeDirectoryExclusion, getExcludedDirectories } from './system-analysis';
 import { startServer, connectToServer, sendData } from './network';
 import discoveryService from './discovery';
 
@@ -58,7 +58,6 @@ ipcMain.handle('get-local-device-info', async () => {
 });
 
 ipcMain.handle('analyze-system', async (event) => {
-  // Set up progress callback to send updates to renderer
   setProgressCallback((progress) => {
     event.sender.send('analysis-progress', progress);
   });
@@ -72,6 +71,18 @@ ipcMain.handle('analyze-system', async (event) => {
     event.sender.send('analysis-error', errorMessage);
     throw error;
   }
+});
+
+ipcMain.handle('add-directory-exclusion', async (event, path: string) => {
+  addDirectoryExclusion(path);
+});
+
+ipcMain.handle('remove-directory-exclusion', async (event, path: string) => {
+  removeDirectoryExclusion(path);
+});
+
+ipcMain.handle('get-excluded-directories', async (event) => {
+  return getExcludedDirectories();
 });
 
 ipcMain.handle('connect-to-server', async (event, ipAddress: string) => {

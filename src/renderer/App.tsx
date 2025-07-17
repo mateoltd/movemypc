@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Interface from './components/Home/Interface';
+import WarningNotification from './components/Common/WarningNotification';
 import './App.css';
 
 interface SelectedItems {
@@ -19,11 +20,20 @@ interface LocalDeviceInfo {
   ipAddress: string;
 }
 
+interface AnalysisWarning {
+  type: 'large_directory' | 'slow_directory' | 'permission_denied';
+  path: string;
+  details: string;
+  fileCount?: number;
+  canExclude: boolean;
+}
+
 interface AnalysisProgress {
   phase: 'files' | 'apps' | 'configurations';
   current: number;
   total: number;
   currentPath?: string;
+  warning?: AnalysisWarning;
 }
 
 export default function App() {
@@ -43,6 +53,7 @@ export default function App() {
   const [showFileSelection, setShowFileSelection] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [currentWarning, setCurrentWarning] = useState<AnalysisWarning | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setTimeoutExpired(true), 10000);
@@ -89,6 +100,9 @@ export default function App() {
     // Analysis event handlers
     window.electronAPI.onAnalysisProgress((progress: AnalysisProgress) => {
       setAnalysisProgress(progress);
+      if (progress.warning) {
+        setCurrentWarning(progress.warning);
+      }
     });
 
     window.electronAPI.onAnalysisComplete((analysisResult: any) => {
@@ -164,6 +178,15 @@ export default function App() {
     window.electronAPI.flushDiscovery();
   };
 
+  const handleWarningExclude = async (path: string) => {
+    await window.electronAPI.addDirectoryExclusion(path);
+    setCurrentWarning(null);
+  };
+
+  const handleWarningDismiss = () => {
+    setCurrentWarning(null);
+  };
+
   const getStatusText = () => {
     if (connectionStatus === 'connected') return 'Connected';
     if (connectionStatus === 'disconnected') return 'Disconnected';
@@ -203,6 +226,14 @@ export default function App() {
             showFileSelection={showFileSelection}
           />
         </div>
+        
+        {currentWarning && (
+          <WarningNotification
+            warning={currentWarning}
+            onExclude={handleWarningExclude}
+            onDismiss={handleWarningDismiss}
+          />
+        )}
       </main>
     </div>
   );

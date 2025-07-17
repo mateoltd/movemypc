@@ -14,6 +14,9 @@ export interface ElectronAPI {
   transferFiles: (selectedItems: any) => Promise<void>;
   flushDiscovery: () => Promise<void>;
   getLocalDeviceInfo: () => Promise<{ hostname: string; ipAddress: string }>;
+  addDirectoryExclusion: (path: string) => Promise<void>;
+  removeDirectoryExclusion: (path: string) => Promise<void>;
+  getExcludedDirectories: () => Promise<string[]>;
 }
 
 declare global {
