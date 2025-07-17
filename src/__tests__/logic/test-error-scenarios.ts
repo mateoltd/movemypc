@@ -19,6 +19,7 @@ import {
  */
 export class ErrorScenarioTester {
   private orchestrator: AnalysisOrchestrator;
+
   private testResults: Map<string, boolean> = new Map();
 
   constructor() {
@@ -207,7 +208,10 @@ export class ErrorScenarioTester {
         name: 'File Counter Cleanup',
         test: () => ErrorScenarioTester.testFileCounterCleanup(),
       },
-      { name: 'Retry Mechanism', test: () => ErrorScenarioTester.testRetryMechanism() },
+      {
+        name: 'Retry Mechanism',
+        test: () => ErrorScenarioTester.testRetryMechanism(),
+      },
       {
         name: 'Safe Execution Fallback',
         test: () => ErrorScenarioTester.testSafeExecutionFallback(),
@@ -216,7 +220,10 @@ export class ErrorScenarioTester {
         name: 'Orchestrator Cleanup',
         test: () => this.testOrchestratorCleanup(),
       },
-      { name: 'Memory Cleanup', test: () => ErrorScenarioTester.testMemoryCleanup() },
+      {
+        name: 'Memory Cleanup',
+        test: () => ErrorScenarioTester.testMemoryCleanup(),
+      },
     ];
     await Promise.all(
       tests.map(async ({ name, test }) => {

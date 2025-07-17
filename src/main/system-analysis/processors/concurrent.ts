@@ -209,11 +209,7 @@ export const processWithControlledConcurrency = async <T, R>(
 
   try {
     // Process items with controlled concurrency using the concurrent operations helper
-    await processConcurrentOperations(
-      items,
-      processItem,
-      concurrency,
-    );
+    await processConcurrentOperations(items, processItem, concurrency);
   } catch (error) {
     // Cleanup any remaining active promises
     log.error(

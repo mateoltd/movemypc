@@ -39,7 +39,9 @@ const DEFAULT_RETRY_OPTIONS: RetryOptions = {
  * @returns Promise that resolves after the specified time
  */
 const sleep = (ms: number): Promise<void> => {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 };
 
 /**
@@ -66,7 +68,7 @@ export const withRetry = async <T>(
   const config = { ...DEFAULT_RETRY_OPTIONS, ...options };
   let lastError: any;
 
-  for (let attempt = 0; attempt < config.maxAttempts; attempt++) {
+  for (let attempt = 0; attempt < config.maxAttempts; attempt += 1) {
     try {
       return await fn();
     } catch (error) {
@@ -122,13 +124,15 @@ export interface CircuitBreakerOptions {
 export class CircuitBreaker {
   private state: CircuitState = CircuitState.CLOSED;
 
-  private failures: number = 0;
+  private failures = 0;
 
-  private lastFailureTime: number = 0;
+  private lastFailureTime = 0;
 
-  private successes: number = 0;
+  private successes = 0;
 
-  constructor(private options: CircuitBreakerOptions) {}
+  constructor(private options: CircuitBreakerOptions) {
+    // Constructor intentionally empty - options are stored in private field
+  }
 
   /**
    * Executes a function with circuit breaker protection
@@ -157,7 +161,7 @@ export class CircuitBreaker {
 
   private onSuccess(): void {
     this.failures = 0;
-    this.successes++;
+    this.successes += 1;
 
     if (this.state === CircuitState.HALF_OPEN) {
       this.state = CircuitState.CLOSED;
@@ -166,7 +170,7 @@ export class CircuitBreaker {
   }
 
   private onFailure(): void {
-    this.failures++;
+    this.failures += 1;
     this.lastFailureTime = Date.now();
 
     if (this.failures >= this.options.failureThreshold) {
@@ -230,8 +234,8 @@ export const withErrorRecovery = <T>(
   const circuitBreaker = createCircuitBreaker(circuitBreakerOptions);
 
   return async (): Promise<T> => {
-    return await circuitBreaker.execute(async () => {
-      return await withRetry(fn, retryOptions);
+    return circuitBreaker.execute(async () => {
+      return withRetry(fn, retryOptions);
     });
   };
 };
