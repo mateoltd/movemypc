@@ -116,6 +116,11 @@ export default function App() {
       setAnalysis(analysisResult);
       setIsAnalyzing(false);
       setAnalysisProgress(null);
+
+      // Automatically open File Manager if we have a connected peer
+      if (connectedPeer) {
+        setShowFileSelection(true);
+      }
     });
 
     window.electronAPI.onAnalysisError((error: string) => {
@@ -125,7 +130,7 @@ export default function App() {
     });
 
     return () => {};
-  }, []);
+  }, [connectedPeer]);
 
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
@@ -161,12 +166,6 @@ export default function App() {
     });
   };
 
-  const handleOpenFileSelection = () => {
-    if (analysis) {
-      setShowFileSelection(true);
-    }
-  };
-
   const handleCloseFileSelection = () => {
     setShowFileSelection(false);
   };
@@ -200,7 +199,6 @@ export default function App() {
             peers={peers}
             onAnalyze={handleAnalyze}
             onConnect={handleConnect}
-            onTransfer={handleOpenFileSelection}
             onRetryDiscovery={handleRetryDiscovery}
             analysis={analysis}
             isTransferring={isTransferring}
