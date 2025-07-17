@@ -123,6 +123,8 @@ const processConcurrentOperations = async <T, R>(
     chunkResults.forEach((result) => {
       if (result.status === 'fulfilled') {
         results.push(result.value);
+      } else {
+        log.error('Concurrent operation failed:', result.reason);
       }
     });
   }, Promise.resolve());
