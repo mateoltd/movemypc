@@ -1,5 +1,6 @@
 import * as net from 'net';
 import { BrowserWindow, ipcMain } from 'electron';
+import log from 'electron-log';
 
 let server: net.Server | null = null;
 let client: net.Socket | null = null;
@@ -7,55 +8,55 @@ const sockets: net.Socket[] = [];
 
 export const startServer = (win: BrowserWindow) => {
   server = net.createServer((socket: net.Socket) => {
-    console.log('Client connected');
+    log.info('Client connected');
     sockets.push(socket);
     win.webContents.send('connection-status', 'connected');
 
     socket.on('data', (data: Buffer) => {
-      console.log('Received data:', data.toString());
+      log.info('Received data:', data.toString());
       try {
         const message = JSON.parse(data.toString());
         if (message.type === 'file-transfer-request') {
           ipcMain.emit('file-transfer-request', message.payload);
         }
       } catch (error) {
-        console.error('Error parsing received data:', error);
+        log.error('Error parsing received data:', error);
       }
     });
 
     socket.on('end', () => {
-      console.log('Client disconnected');
+      log.info('Client disconnected');
       sockets.splice(sockets.indexOf(socket), 1);
       win.webContents.send('connection-status', 'disconnected');
     });
 
     socket.on('error', (err: Error) => {
-      console.error('Socket error:', err);
+      log.error('Socket error:', err);
     });
   });
 
   server.listen(9876, '0.0.0.0', () => {
-    console.log('Server listening on port 9876');
+    log.info('Server listening on port 9876');
   });
 };
 
 export const connectToServer = (ipAddress: string, win: BrowserWindow) => {
   client = net.createConnection({ host: ipAddress, port: 9876 }, () => {
-    console.log('Connected to server');
+    log.info('Connected to server');
     win.webContents.send('connection-status', 'connected');
   });
 
   client.on('data', (data: Buffer) => {
-    console.log('Received data:', data.toString());
+    log.info('Received data:', data.toString());
   });
 
   client.on('end', () => {
-    console.log('Disconnected from server');
+    log.info('Disconnected from server');
     win.webContents.send('connection-status', 'disconnected');
   });
 
   client.on('error', (err: Error) => {
-    console.error('Connection error:', err);
+    log.error('Connection error:', err);
     win.webContents.send('connection-status', 'error');
     win.webContents.send('network-error', err.message);
   });
