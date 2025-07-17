@@ -10,20 +10,20 @@ export interface FileItem {
   extension?: string;
 }
 
-export interface AnalysisProgress {
-  phase: 'files' | 'apps' | 'configurations';
-  current: number;
-  total: number;
-  currentPath?: string;
-  warning?: AnalysisWarning;
-}
-
 export interface AnalysisWarning {
   type: 'large_directory' | 'slow_directory' | 'permission_denied';
   path: string;
   details: string;
   fileCount?: number;
   canExclude: boolean;
+}
+
+export interface AnalysisProgress {
+  phase: 'files' | 'apps' | 'configurations';
+  current: number;
+  total: number;
+  currentPath?: string;
+  warning?: AnalysisWarning;
 }
 
 export interface SystemAnalysisResult {
@@ -58,4 +58,4 @@ export interface ExclusionManager {
   addExclusion: (path: string) => void;
   removeExclusion: (path: string) => void;
   isExcluded: (path: string) => boolean;
-} 
+}
