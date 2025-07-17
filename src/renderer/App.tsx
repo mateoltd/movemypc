@@ -51,16 +51,25 @@ export default function App() {
   const [localDeviceInfo, setLocalDeviceInfo] =
     useState<LocalDeviceInfo | null>(null);
   const [showFileSelection, setShowFileSelection] = useState(false);
-  const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | null>(null);
+  const [analysisProgress, setAnalysisProgress] =
+    useState<AnalysisProgress | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [currentWarning, setCurrentWarning] = useState<AnalysisWarning | null>(null);
+  const [currentWarning, setCurrentWarning] = useState<AnalysisWarning | null>(
+    null,
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => setTimeoutExpired(true), 10000);
 
-    window.electronAPI.getLocalDeviceInfo().then((info) => {
-      setLocalDeviceInfo(info);
-    });
+    window.electronAPI
+      .getLocalDeviceInfo()
+      .then((info) => {
+        setLocalDeviceInfo(info);
+        return info;
+      })
+      .catch((error) => {
+        console.error('Failed to get local device info:', error);
+      });
 
     window.electronAPI.onConnectionStatus((status: string) => {
       setConnectionStatus(status);
@@ -70,12 +79,12 @@ export default function App() {
     });
 
     window.electronAPI.onFileCopyError((error: any) => {
-      alert(`Error copying file: ${error.fileName}\n${error.error}`);
+      console.error(`Error copying file: ${error.fileName}`, error.error);
       setIsTransferring(false);
     });
 
     window.electronAPI.onNetworkError((error: string) => {
-      alert(`Network error:\n${error}`);
+      console.error('Network error:', error);
       setIsTransferring(false);
     });
 
@@ -112,7 +121,7 @@ export default function App() {
     });
 
     window.electronAPI.onAnalysisError((error: string) => {
-      alert(`Analysis error: ${error}`);
+      console.error('Analysis error:', error);
       setIsAnalyzing(false);
       setAnalysisProgress(null);
     });
@@ -164,14 +173,6 @@ export default function App() {
     setShowFileSelection(false);
   };
 
-  const handleTransfer = () => {
-    if (connectionStatus === 'connected' && analysis) {
-      setIsTransferring(true);
-      window.electronAPI.transferFiles(selectedItems);
-      setShowFileSelection(false);
-    }
-  };
-
   const handleRetryDiscovery = () => {
     setTimeoutExpired(false);
     setPeers([]);
@@ -185,17 +186,6 @@ export default function App() {
 
   const handleWarningDismiss = () => {
     setCurrentWarning(null);
-  };
-
-  const getStatusText = () => {
-    if (connectionStatus === 'connected') return 'Connected';
-    if (connectionStatus === 'disconnected') return 'Disconnected';
-    return 'Waiting for connection...';
-  };
-
-  const getDestinationText = () => {
-    if (connectedPeer) return connectedPeer.name;
-    return 'PC to transfer';
   };
 
   return (
@@ -226,7 +216,7 @@ export default function App() {
             showFileSelection={showFileSelection}
           />
         </div>
-        
+
         {currentWarning && (
           <WarningNotification
             warning={currentWarning}
