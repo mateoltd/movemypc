@@ -1,4 +1,4 @@
-import { extname } from 'path';
+import { extname, join } from 'path';
 import * as fs from 'fs';
 import { promisify } from 'util';
 import log from 'electron-log';
@@ -175,7 +175,7 @@ const scanDirectory = async (
     }
 
     const processEntry = async (entry: string): Promise<FileItem | null> => {
-      const fullPath = `${dirPath}\\${entry}`;
+      const fullPath = join(dirPath, entry);
 
       if (shouldExcludePath(fullPath)) {
         return null;
@@ -323,7 +323,7 @@ const analyzeApplications = async (): Promise<FileItem[]> => {
       const processAppEntry = async (
         entry: string,
       ): Promise<FileItem | null> => {
-        const fullPath = `${appDir}\\${entry}`;
+        const fullPath = join(appDir, entry);
 
         try {
           let stats;
