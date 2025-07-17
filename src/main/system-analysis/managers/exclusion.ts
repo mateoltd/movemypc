@@ -23,7 +23,15 @@ export const createExclusionManager = (): ExclusionManager => {
   };
 };
 
-
+/**
+ * Cleanup function to be called when analysis is complete or interrupted
+ */
+export const cleanupExclusionManager = (): void => {
+  if (exclusionManager) {
+    exclusionManager.excludedPaths.clear();
+    log.debug('Exclusion manager cleanup completed');
+  }
+};
 
 /**
  * Registers cleanup handlers for process termination
@@ -87,14 +95,4 @@ export const isPathExcluded = (path: string): boolean => {
     return false;
   }
   return exclusionManager.isExcluded(path);
-};
-
-/**
- * Cleanup function to be called when analysis is complete or interrupted
- */
-export const cleanupExclusionManager = (): void => {
-  if (exclusionManager) {
-    exclusionManager.excludedPaths.clear();
-    log.debug('Exclusion manager cleanup completed');
-  }
 };
