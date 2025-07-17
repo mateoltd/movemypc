@@ -35,7 +35,7 @@ interface FileSelectionModalProps {
   isTransferring: boolean;
 }
 
-const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
+function FileSelectionModal({
   isOpen,
   onClose,
   analysis,
@@ -43,7 +43,7 @@ const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
   onSelectionChange,
   onTransfer,
   isTransferring,
-}) => {
+}: FileSelectionModalProps) {
   const [activeTab, setActiveTab] = useState<
     'files' | 'apps' | 'configurations'
   >('files');
@@ -99,7 +99,7 @@ const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
               {getTotalSelectedCount()} of {getTotalItemsCount()} items selected
             </p>
           </div>
-          <button className="modal-close" onClick={onClose}>
+          <button type="button" className="modal-close" onClick={onClose}>
             ✕
           </button>
         </div>
@@ -108,6 +108,7 @@ const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
           {tabs.map((tab) => (
             <button
               key={tab.id}
+              type="button"
               className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
               onClick={() => setActiveTab(tab.id)}
             >
@@ -144,10 +145,15 @@ const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
             </span>
           </div>
           <div className="modal-footer-actions">
-            <button className="btn btn-secondary" onClick={onClose}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={onClose}
+            >
               Cancel
             </button>
             <button
+              type="button"
               className="btn btn-primary"
               onClick={onTransfer}
               disabled={getTotalSelectedCount() === 0 || isTransferring}
@@ -161,6 +167,6 @@ const FileSelectionModal: React.FC<FileSelectionModalProps> = ({
       </div>
     </div>
   );
-};
+}
 
 export default FileSelectionModal;
