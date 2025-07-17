@@ -46,10 +46,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('file-copy-error', (event, error) => callback(error));
   },
   onAnalysisProgress: (callback: (progress: any) => void) => {
-    ipcRenderer.on('analysis-progress', (event, progress) => callback(progress));
+    ipcRenderer.on('analysis-progress', (event, progress) =>
+      callback(progress),
+    );
   },
   onAnalysisComplete: (callback: (analysis: any) => void) => {
-    ipcRenderer.on('analysis-complete', (event, analysis) => callback(analysis));
+    ipcRenderer.on('analysis-complete', (event, analysis) =>
+      callback(analysis),
+    );
   },
   onAnalysisError: (callback: (error: string) => void) => {
     ipcRenderer.on('analysis-error', (event, error) => callback(error));
@@ -61,8 +65,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('add-directory-exclusion', path),
   removeDirectoryExclusion: (path: string) =>
     ipcRenderer.invoke('remove-directory-exclusion', path),
-  getExcludedDirectories: () =>
-    ipcRenderer.invoke('get-excluded-directories'),
+  getExcludedDirectories: () => ipcRenderer.invoke('get-excluded-directories'),
 });
 
 export type ElectronHandler = typeof electronHandler;
