@@ -1,2 +1,2 @@
 export * from './analysis-patterns';
-export * from './directory-paths'; 
+export * from './directory-paths';
