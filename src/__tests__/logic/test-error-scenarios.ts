@@ -1,9 +1,7 @@
 import log from 'electron-log';
 import AnalysisOrchestrator from '../../main/system-analysis/core/orchestrator';
-import {
-  withRetry,
-  safeExecute,
-} from '../../main/system-analysis/utils/error-recovery';
+import { withRetry } from '../../main/system-analysis/service/retry.service';
+import { safeExecute } from '../../main/system-analysis/service/error.service';
 import {
   logError,
   logPerformanceMetrics,
