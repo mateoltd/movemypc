@@ -36,6 +36,38 @@ const filterConfigurationFiles = (files: FileItem[]): FileItem[] => {
 };
 
 /**
+ * Handles errors during directory scanning with appropriate logging
+ * @param error - The error object
+ * @param directoryType - Type of directory being scanned (e.g., "configuration", "user configuration")
+ * @param directoryPath - Path of the directory being scanned
+ */
+const handleScanError = (error: any, directoryType: string, directoryPath: string): void => {
+  const errorCode = error.code || 'UNKNOWN';
+  const errorMessage = error.message || 'Unknown error';
+
+  switch (errorCode) {
+    case 'EACCES':
+      log.warn(
+        `Permission denied scanning ${directoryType} directory: ${directoryPath}`,
+      );
+      break;
+    case 'ENOENT':
+      log.warn(`${directoryType.charAt(0).toUpperCase() + directoryType.slice(1)} directory no longer exists: ${directoryPath}`);
+      break;
+    case 'EMFILE':
+    case 'ENFILE':
+      log.error(
+        `Too many open files when scanning ${directoryType} directory: ${directoryPath}`,
+      );
+      break;
+    default:
+      log.warn(
+        `Failed to scan ${directoryType} directory ${directoryPath} (${errorCode}): ${errorMessage}`,
+      );
+  }
+};
+
+/**
  * Processes a single configuration directory
  * @param configDir - Configuration directory path
  * @param index - Directory index for progress tracking
@@ -68,29 +100,7 @@ const processConfigDir = async (
     const configFiles = filterConfigurationFiles(files);
     dirConfigs.push(...configFiles);
   } catch (error: any) {
-    const errorCode = error.code || 'UNKNOWN';
-    const errorMessage = error.message || 'Unknown error';
-
-    switch (errorCode) {
-      case 'EACCES':
-        log.warn(
-          `Permission denied scanning configuration directory: ${configDir}`,
-        );
-        break;
-      case 'ENOENT':
-        log.warn(`Configuration directory no longer exists: ${configDir}`);
-        break;
-      case 'EMFILE':
-      case 'ENFILE':
-        log.error(
-          `Too many open files when scanning configuration directory: ${configDir}`,
-        );
-        break;
-      default:
-        log.warn(
-          `Failed to scan configuration directory ${configDir} (${errorCode}): ${errorMessage}`,
-        );
-    }
+    handleScanError(error, 'configuration', configDir);
   }
 
   return dirConfigs;
@@ -154,29 +164,7 @@ export const scanUserConfigurations = async (
       const configFiles = filterConfigurationFiles(files);
       configs.push(...configFiles);
     } catch (error: any) {
-      const errorCode = error.code || 'UNKNOWN';
-      const errorMessage = error.message || 'Unknown error';
-
-      switch (errorCode) {
-        case 'EACCES':
-          log.warn(
-            `Permission denied scanning user configuration directory: ${dir}`,
-          );
-          break;
-        case 'ENOENT':
-          log.warn(`User configuration directory no longer exists: ${dir}`);
-          break;
-        case 'EMFILE':
-        case 'ENFILE':
-          log.error(
-            `Too many open files when scanning user configuration directory: ${dir}`,
-          );
-          break;
-        default:
-          log.warn(
-            `Failed to scan user configuration directory ${dir} (${errorCode}): ${errorMessage}`,
-          );
-      }
+      handleScanError(error, 'user configuration', dir);
     }
 
     return configs;
