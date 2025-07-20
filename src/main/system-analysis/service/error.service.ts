@@ -123,10 +123,15 @@ export const createCircuitBreaker = (
 };
 
 /**
+ * Type representing async functions that can be wrapped with circuit breaker
+ */
+type AsyncFunction<T = any> = () => Promise<T>;
+
+/**
  * Module-level cache for circuit breaker instances
  * Uses WeakMap to allow garbage collection of unused function references
  */
-const circuitBreakerCache = new WeakMap<Function, CircuitBreaker>();
+const circuitBreakerCache = new WeakMap<AsyncFunction, CircuitBreaker>();
 
 /**
  * Generates a cache key for circuit breaker options to ensure proper instance reuse
