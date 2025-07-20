@@ -81,7 +81,7 @@ export const withRetry = async <T>(
       // Check if we should retry
       if (
         attempt === config.maxAttempts - 1 ||
-        !config.retryCondition!(error)
+        !(config.retryCondition && config.retryCondition(error))
       ) {
         throw error;
       }
