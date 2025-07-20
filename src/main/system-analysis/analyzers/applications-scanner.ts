@@ -3,11 +3,13 @@ import log from 'electron-log';
 import {
   generateFileId,
   getFileExtension,
+  isExecutableFile,
+} from '../utils/file-utils';
+import {
   isDirectoryAccessible,
   safeReaddir,
   safeStat,
-  isExecutableFile,
-} from '../utils/file-utils';
+} from '../service/file.service';
 import { sendProgress } from '../managers/manager';
 import {
   processConcurrentOperations,

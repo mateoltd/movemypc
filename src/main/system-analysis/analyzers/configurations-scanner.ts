@@ -1,5 +1,5 @@
 import log from 'electron-log';
-import { isDirectoryAccessible } from '../utils/file-utils';
+import { isDirectoryAccessible } from '../service/file.service';
 import { sendProgress } from '../managers/manager';
 import { processConcurrentOperations } from '../processors/concurrent';
 import { scanDirectory } from './directory-scanner';

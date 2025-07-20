@@ -43,28 +43,34 @@ export {
 export {
   generateFileId,
   getFileExtension,
-  isDirectoryAccessible,
-  safeReaddir,
-  safeStat,
   resetFileCounter,
   getFileCounter,
   isExecutableFile,
   formatFileSize,
   cleanupFileUtils,
+} from './utils/file-utils';
+
+// File Service
+export {
+  isDirectoryAccessible,
+  safeReaddir,
+  safeStat,
   readdir,
   stat,
   access,
-} from './utils/file-utils';
+} from './service/file.service';
 
+// Error Service
 export {
-  withRetry,
   safeExecute,
+  CircuitBreaker,
   createCircuitBreaker,
   withErrorRecovery,
-  CircuitBreaker,
-  RetryOptions,
   CircuitBreakerOptions,
-} from './utils/error-recovery';
+} from './service/error.service';
+
+// Retry Service
+export { withRetry, RetryOptions } from './service/retry.service';
 
 export {
   logError,

@@ -1,12 +1,11 @@
 import { join } from 'path';
 import log from 'electron-log';
+import { generateFileId, getFileExtension } from '../utils/file-utils';
 import {
-  generateFileId,
-  getFileExtension,
   isDirectoryAccessible,
   safeReaddir,
   safeStat,
-} from '../utils/file-utils';
+} from '../service/file.service';
 import { shouldExcludePath, isPathExcluded } from '../managers/exclusion';
 import { updateProgress, sendProgress } from '../managers/manager';
 import { processBatch } from '../processors/concurrent';
