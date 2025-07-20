@@ -131,7 +131,7 @@ type AsyncFunction<T = any> = () => Promise<T>;
  * Module-level cache for circuit breaker instances
  * Uses WeakMap to allow garbage collection of unused function references
  */
-const circuitBreakerCache = new WeakMap<AsyncFunction, CircuitBreaker>();
+let circuitBreakerCache = new WeakMap<AsyncFunction, CircuitBreaker>();
 
 /**
  * Generates a cache key for circuit breaker options to ensure proper instance reuse
@@ -206,9 +206,17 @@ export const withErrorRecovery = <T>(
 /**
  * Clears all cached circuit breakers
  * Useful for testing or when you want to reset all circuit breaker states
+ * 
+ * Note: WeakMap doesn't have a clear() method, so we recreate the WeakMap instance
+ * to effectively clear it. This ensures both cache layers are properly reset.
  */
 export const clearCircuitBreakerCache = (): void => {
+  // Clear the composite cache (Map)
   compositeCircuitBreakerCache.clear();
+  
+  // Clear the WeakMap cache by recreating it
+  // WeakMap doesn't have a clear() method, so this is the standard approach
+  circuitBreakerCache = new WeakMap<AsyncFunction, CircuitBreaker>();
 };
 
 /**
