@@ -66,11 +66,11 @@ export {
   CircuitBreaker,
   createCircuitBreaker,
   withErrorRecovery,
-  CircuitBreakerOptions,
+  type CircuitBreakerOptions,
 } from './service/error.service';
 
 // Retry Service
-export { withRetry, RetryOptions } from './service/retry.service';
+export { withRetry, type RetryOptions } from './service/retry.service';
 
 export {
   logError,
@@ -79,8 +79,8 @@ export {
   logOperationRetry,
   logPerformanceMetrics,
   logSystemResources,
-  LogContext,
-  ErrorSeverity,
+  type LogContext,
+  type ErrorSeverity,
 } from './utils/logging';
 
 // Analyzers
