@@ -131,8 +131,10 @@ export const analyzeConfigurations = async (
   );
 
   configDirResults.forEach((result) => {
-    if (Array.isArray(result)) {
-      configs.push(...result);
+    if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+      configs.push(...result.value);
+    } else if (result.status === 'rejected') {
+      log.error('Configuration directory processing failed:', result.reason);
     }
   });
 
@@ -177,8 +179,10 @@ export const scanUserConfigurations = async (
   );
 
   results.forEach((result) => {
-    if (Array.isArray(result)) {
-      userConfigs.push(...result);
+    if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+      userConfigs.push(...result.value);
+    } else if (result.status === 'rejected') {
+      log.error('User configuration scanning failed:', result.reason);
     }
   });
 

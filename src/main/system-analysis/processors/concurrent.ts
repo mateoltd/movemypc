@@ -1,70 +1,26 @@
 import log from 'electron-log';
 import { AnalysisLimits } from '../../types/analysis-types';
+import { 
+  processConcurrentWithPool,
+  extractSuccessfulResults 
+} from '../../utils/concurrency';
 
 /**
- * Processes items concurrently with controlled concurrency level
+ * Enhanced concurrent operations processor with robust error handling
  * @param items - Array of items to process
  * @param processor - Function to process each item
  * @param concurrency - Maximum number of concurrent operations
- * @returns Promise resolving to array of results
+ * @returns Promise resolving to array of PromiseSettledResult containing all results and errors
  */
 export const processConcurrentOperations = async <T, R>(
   items: T[],
   processor: (item: T) => Promise<R>,
   concurrency: number,
-): Promise<R[]> => {
-  const results: R[] = [];
-  const activePromises = new Set<Promise<any>>();
-
-  // Process items in groups based on concurrency level
-  const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += concurrency) {
-    chunks.push(items.slice(i, i + concurrency));
-  }
-
-  try {
-    // Process each chunk sequentially, but items within each chunk concurrently
-    await chunks.reduce(async (previousPromise, chunk) => {
-      await previousPromise;
-
-      const chunkPromises = chunk.map(async (item) => {
-        const promise = processor(item);
-        activePromises.add(promise);
-
-        try {
-          const result = await promise;
-          return result;
-        } finally {
-          activePromises.delete(promise);
-        }
-      });
-
-      const chunkResults = await Promise.allSettled(chunkPromises);
-
-      chunkResults.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-          results.push(result.value);
-        } else {
-          const item = chunk[index];
-          log.error(
-            `Concurrent operation failed for item ${JSON.stringify(item)}:`,
-            result.reason,
-          );
-        }
-      });
-    }, Promise.resolve());
-  } catch (error) {
-    // Cleanup any remaining active promises
-    log.error(
-      'Error in concurrent processing, cleaning up active promises:',
-      error,
-    );
-    await Promise.allSettled(Array.from(activePromises));
-    throw error;
-  }
-
-  return results;
+): Promise<PromiseSettledResult<R>[]> => {
+  return processConcurrentWithPool(items, processor, concurrency);
 };
+
+
 
 /**
  * Processes items in batches with appropriate concurrency based on device capabilities
@@ -186,39 +142,24 @@ export const processWithControlledConcurrency = async <T, R>(
   concurrency: number,
   errorHandler?: (error: any, item: T) => void,
 ): Promise<R[]> => {
-  const results: R[] = [];
-  const activePromises = new Set<Promise<any>>();
-
-  const processItem = async (item: T): Promise<void> => {
-    const promise = processor(item);
-    activePromises.add(promise);
-
-    try {
-      const result = await promise;
-      results.push(result);
-    } catch (error) {
+  // Use the enhanced processor with proper error handling
+  const results = await processConcurrentOperations(items, processor, concurrency);
+  
+  const successfulResults: R[] = [];
+  
+  // Process results and handle errors
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      successfulResults.push(result.value);
+    } else {
+      const item = items[index];
       if (errorHandler) {
-        errorHandler(error, item);
+        errorHandler(result.reason, item);
       } else {
-        log.error(`Processing failed for item ${JSON.stringify(item)}:`, error);
+        log.error(`Processing failed for item ${JSON.stringify(item)}:`, result.reason);
       }
-    } finally {
-      activePromises.delete(promise);
     }
-  };
+  });
 
-  try {
-    // Process items with controlled concurrency using the concurrent operations helper
-    await processConcurrentOperations(items, processItem, concurrency);
-  } catch (error) {
-    // Cleanup any remaining active promises
-    log.error(
-      'Error in controlled concurrency processing, cleaning up active promises:',
-      error,
-    );
-    await Promise.allSettled(Array.from(activePromises));
-    throw error;
-  }
-
-  return results;
+  return successfulResults;
 };

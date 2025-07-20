@@ -166,8 +166,10 @@ export const analyzeApplications = async (
   );
 
   appDirResults.forEach((result) => {
-    if (Array.isArray(result)) {
-      apps.push(...result);
+    if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+      apps.push(...result.value);
+    } else if (result.status === 'rejected') {
+      log.error('Application directory processing failed:', result.reason);
     }
   });
 
@@ -223,8 +225,10 @@ export const scanPortableApps = async (
   );
 
   results.forEach((result) => {
-    if (Array.isArray(result)) {
-      portableApps.push(...result);
+    if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+      portableApps.push(...result.value);
+    } else if (result.status === 'rejected') {
+      log.error('Portable application scanning failed:', result.reason);
     }
   });
 
