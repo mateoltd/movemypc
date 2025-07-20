@@ -1,3 +1,5 @@
+Warning: This project is still a work in progress. It is not usable nor stable at this stage.
+
 ## Install
 
 Clone the repo and install dependencies:
