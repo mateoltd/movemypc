@@ -296,3 +296,21 @@ export const runErrorScenarioTests = async (): Promise<
     tester.cleanup();
   }
 };
+
+// Jest tests
+describe('Error Scenario Tests', () => {
+  test('should run file counter cleanup test', async () => {
+    const result = await ErrorScenarioTester.testFileCounterCleanup();
+    expect(result).toBe(true);
+  });
+
+  test('should run retry mechanism test', async () => {
+    const result = await ErrorScenarioTester.testRetryMechanism();
+    expect(result).toBe(true);
+  });
+
+  test('should run safe execution fallback test', async () => {
+    const result = await ErrorScenarioTester.testSafeExecutionFallback();
+    expect(result).toBe(true);
+  });
+});
