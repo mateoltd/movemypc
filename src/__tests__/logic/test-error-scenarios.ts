@@ -15,7 +15,7 @@ import {
 /**
  * Test scenarios for error handling and cleanup
  */
-export class ErrorScenarioTester {
+class ErrorScenarioTester {
   private orchestrator: AnalysisOrchestrator;
 
   private testResults: Map<string, boolean> = new Map();
@@ -284,14 +284,14 @@ export class ErrorScenarioTester {
 /**
  * Runs error scenario tests (can be called from main process)
  */
-export const runErrorScenarioTests = async (): Promise<
-  Map<string, boolean>
-> => {
+const runErrorScenarioTests = async (): Promise<Map<string, boolean>> => {
   const tester = new ErrorScenarioTester();
 
   try {
     const results = await tester.runAllTests();
-    return results;
+    // Create a copy of the results before cleanup
+    const resultsCopy = new Map(results);
+    return resultsCopy;
   } finally {
     tester.cleanup();
   }
@@ -312,5 +312,15 @@ describe('Error Scenario Tests', () => {
   test('should run safe execution fallback test', async () => {
     const result = await ErrorScenarioTester.testSafeExecutionFallback();
     expect(result).toBe(true);
+  });
+
+  test('should run all error scenario tests', async () => {
+    const results = await runErrorScenarioTests();
+    expect(results).toBeInstanceOf(Map);
+    expect(results.size).toBe(5); // Should have 5 test results
+    // Check that all tests passed
+    Array.from(results.values()).forEach((passed) => {
+      expect(passed).toBe(true);
+    });
   });
 });
