@@ -105,6 +105,12 @@ export class CircuitBreaker {
   }
 }
 
+const DEFAULT_CIRCUIT_BREAKER_OPTIONS: CircuitBreakerOptions = {
+  failureThreshold: 5,
+  resetTimeout: 30000, // 30 seconds
+  monitoringPeriod: 60000, // 1 minute
+};
+
 /**
  * Creates a circuit breaker with default options
  * @param options - Circuit breaker options
@@ -113,13 +119,7 @@ export class CircuitBreaker {
 export const createCircuitBreaker = (
   options: Partial<CircuitBreakerOptions> = {},
 ): CircuitBreaker => {
-  const defaultOptions: CircuitBreakerOptions = {
-    failureThreshold: 5,
-    resetTimeout: 30000, // 30 seconds
-    monitoringPeriod: 60000, // 1 minute
-  };
-
-  return new CircuitBreaker({ ...defaultOptions, ...options });
+  return new CircuitBreaker({ ...DEFAULT_CIRCUIT_BREAKER_OPTIONS, ...options });
 };
 
 /**
@@ -134,13 +134,7 @@ const circuitBreakerCache = new WeakMap<Function, CircuitBreaker>();
  * @returns String representation of the options
  */
 const getOptionsKey = (options: Partial<CircuitBreakerOptions>): string => {
-  const defaultOptions: CircuitBreakerOptions = {
-    failureThreshold: 5,
-    resetTimeout: 30000,
-    monitoringPeriod: 60000,
-  };
-
-  const finalOptions = { ...defaultOptions, ...options };
+  const finalOptions = { ...DEFAULT_CIRCUIT_BREAKER_OPTIONS, ...options };
   return `${finalOptions.failureThreshold}-${finalOptions.resetTimeout}-${finalOptions.monitoringPeriod}`;
 };
 
