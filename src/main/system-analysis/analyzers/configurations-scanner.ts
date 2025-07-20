@@ -41,7 +41,11 @@ const filterConfigurationFiles = (files: FileItem[]): FileItem[] => {
  * @param directoryType - Type of directory being scanned (e.g., "configuration", "user configuration")
  * @param directoryPath - Path of the directory being scanned
  */
-const handleScanError = (error: any, directoryType: string, directoryPath: string): void => {
+const handleScanError = (
+  error: any,
+  directoryType: string,
+  directoryPath: string,
+): void => {
   const errorCode = error.code || 'UNKNOWN';
   const errorMessage = error.message || 'Unknown error';
 
