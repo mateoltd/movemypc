@@ -138,7 +138,7 @@ const getOptionsKey = (options: Partial<CircuitBreakerOptions>): string => {
     resetTimeout: 30000,
     monitoringPeriod: 60000,
   };
-  
+
   const finalOptions = { ...defaultOptions, ...options };
   return `${finalOptions.failureThreshold}-${finalOptions.resetTimeout}-${finalOptions.monitoringPeriod}`;
 };
@@ -162,7 +162,7 @@ export const withErrorRecovery = <T>(
 ): (() => Promise<T>) => {
   // Check if a CircuitBreaker instance was passed directly
   let circuitBreaker: CircuitBreaker;
-  
+
   if (circuitBreakerOptions instanceof CircuitBreaker) {
     // Use the provided CircuitBreaker instance
     circuitBreaker = circuitBreakerOptions;
@@ -170,8 +170,8 @@ export const withErrorRecovery = <T>(
     circuitBreakerCache.set(fn, circuitBreaker);
   } else {
     // Try to get existing circuit breaker from WeakMap cache first
-    let existingCircuitBreaker = circuitBreakerCache.get(fn);
-    
+    const existingCircuitBreaker = circuitBreakerCache.get(fn);
+
     if (existingCircuitBreaker) {
       circuitBreaker = existingCircuitBreaker;
     } else {
@@ -179,9 +179,10 @@ export const withErrorRecovery = <T>(
       const functionKey = fn.name || fn.toString().slice(0, 100); // Use function name or truncated string
       const optionsKey = getOptionsKey(circuitBreakerOptions);
       const compositeKey = `${functionKey}-${optionsKey}`;
-      
-      const cachedCircuitBreaker = compositeCircuitBreakerCache.get(compositeKey);
-      
+
+      const cachedCircuitBreaker =
+        compositeCircuitBreakerCache.get(compositeKey);
+
       if (cachedCircuitBreaker) {
         circuitBreaker = cachedCircuitBreaker;
       } else {
@@ -189,7 +190,7 @@ export const withErrorRecovery = <T>(
         circuitBreaker = createCircuitBreaker(circuitBreakerOptions);
         compositeCircuitBreakerCache.set(compositeKey, circuitBreaker);
       }
-      
+
       // Also cache in WeakMap for faster lookup
       circuitBreakerCache.set(fn, circuitBreaker);
     }

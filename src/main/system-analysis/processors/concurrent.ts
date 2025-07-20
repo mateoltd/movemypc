@@ -1,8 +1,7 @@
 import log from 'electron-log';
 import { AnalysisLimits } from '../../types/analysis-types';
-import { 
+import {
   processConcurrentWithPool,
-  extractSuccessfulResults 
 } from '../../utils/concurrency';
 
 /**
@@ -19,8 +18,6 @@ export const processConcurrentOperations = async <T, R>(
 ): Promise<PromiseSettledResult<R>[]> => {
   return processConcurrentWithPool(items, processor, concurrency);
 };
-
-
 
 /**
  * Processes items in batches with appropriate concurrency based on device capabilities
@@ -143,10 +140,14 @@ export const processWithControlledConcurrency = async <T, R>(
   errorHandler?: (error: any, item: T) => void,
 ): Promise<R[]> => {
   // Use the enhanced processor with proper error handling
-  const results = await processConcurrentOperations(items, processor, concurrency);
-  
+  const results = await processConcurrentOperations(
+    items,
+    processor,
+    concurrency,
+  );
+
   const successfulResults: R[] = [];
-  
+
   // Process results and handle errors
   results.forEach((result, index) => {
     if (result.status === 'fulfilled') {
@@ -156,7 +157,10 @@ export const processWithControlledConcurrency = async <T, R>(
       if (errorHandler) {
         errorHandler(result.reason, item);
       } else {
-        log.error(`Processing failed for item ${JSON.stringify(item)}:`, result.reason);
+        log.error(
+          `Processing failed for item ${JSON.stringify(item)}:`,
+          result.reason,
+        );
       }
     }
   });

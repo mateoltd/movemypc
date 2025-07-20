@@ -56,7 +56,9 @@ const handleScanError = (
       );
       break;
     case 'ENOENT':
-      log.warn(`${directoryType.charAt(0).toUpperCase() + directoryType.slice(1)} directory no longer exists: ${directoryPath}`);
+      log.warn(
+        `${directoryType.charAt(0).toUpperCase() + directoryType.slice(1)} directory no longer exists: ${directoryPath}`,
+      );
       break;
     case 'EMFILE':
     case 'ENFILE':
