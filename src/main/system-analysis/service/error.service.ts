@@ -122,24 +122,103 @@ export const createCircuitBreaker = (
 };
 
 /**
+ * Module-level cache for circuit breaker instances
+ * Uses WeakMap to allow garbage collection of unused function references
+ */
+const circuitBreakerCache = new WeakMap<Function, CircuitBreaker>();
+
+/**
+ * Generates a cache key for circuit breaker options to ensure proper instance reuse
+ * @param options - Circuit breaker options
+ * @returns String representation of the options
+ */
+const getOptionsKey = (options: Partial<CircuitBreakerOptions>): string => {
+  const defaultOptions: CircuitBreakerOptions = {
+    failureThreshold: 5,
+    resetTimeout: 30000,
+    monitoringPeriod: 60000,
+  };
+  
+  const finalOptions = { ...defaultOptions, ...options };
+  return `${finalOptions.failureThreshold}-${finalOptions.resetTimeout}-${finalOptions.monitoringPeriod}`;
+};
+
+/**
+ * Extended cache that combines function and options for composite keys
+ */
+const compositeCircuitBreakerCache = new Map<string, CircuitBreaker>();
+
+/**
  * Wraps a function with both retry and circuit breaker patterns
  * @param fn - Function to wrap
  * @param retryOptions - Retry options
- * @param circuitBreakerOptions - Circuit breaker options
+ * @param circuitBreakerOptions - Circuit breaker options OR existing CircuitBreaker instance
  * @returns Wrapped function with error recovery
  */
 export const withErrorRecovery = <T>(
   fn: () => Promise<T>,
   retryOptions: Partial<RetryOptions> = {},
-  circuitBreakerOptions: Partial<CircuitBreakerOptions> = {},
+  circuitBreakerOptions: Partial<CircuitBreakerOptions> | CircuitBreaker = {},
 ): (() => Promise<T>) => {
-  const circuitBreaker = createCircuitBreaker(circuitBreakerOptions);
+  // Check if a CircuitBreaker instance was passed directly
+  let circuitBreaker: CircuitBreaker;
+  
+  if (circuitBreakerOptions instanceof CircuitBreaker) {
+    // Use the provided CircuitBreaker instance
+    circuitBreaker = circuitBreakerOptions;
+    // Cache the provided instance for this function
+    circuitBreakerCache.set(fn, circuitBreaker);
+  } else {
+    // Try to get existing circuit breaker from WeakMap cache first
+    let existingCircuitBreaker = circuitBreakerCache.get(fn);
+    
+    if (existingCircuitBreaker) {
+      circuitBreaker = existingCircuitBreaker;
+    } else {
+      // If not found in WeakMap, check composite cache with function name and options
+      const functionKey = fn.name || fn.toString().slice(0, 100); // Use function name or truncated string
+      const optionsKey = getOptionsKey(circuitBreakerOptions);
+      const compositeKey = `${functionKey}-${optionsKey}`;
+      
+      const cachedCircuitBreaker = compositeCircuitBreakerCache.get(compositeKey);
+      
+      if (cachedCircuitBreaker) {
+        circuitBreaker = cachedCircuitBreaker;
+      } else {
+        // Create new circuit breaker and cache it
+        circuitBreaker = createCircuitBreaker(circuitBreakerOptions);
+        compositeCircuitBreakerCache.set(compositeKey, circuitBreaker);
+      }
+      
+      // Also cache in WeakMap for faster lookup
+      circuitBreakerCache.set(fn, circuitBreaker);
+    }
+  }
 
   return async (): Promise<T> => {
     return circuitBreaker.execute(async () => {
       return withRetry(fn, retryOptions);
     });
   };
+};
+
+/**
+ * Clears all cached circuit breakers
+ * Useful for testing or when you want to reset all circuit breaker states
+ */
+export const clearCircuitBreakerCache = (): void => {
+  compositeCircuitBreakerCache.clear();
+};
+
+/**
+ * Gets the current circuit breaker for a function, if it exists
+ * @param fn - Function to get circuit breaker for
+ * @returns Circuit breaker instance or undefined if not cached
+ */
+export const getCircuitBreakerForFunction = <T>(
+  fn: () => Promise<T>,
+): CircuitBreaker | undefined => {
+  return circuitBreakerCache.get(fn);
 };
 
 /**
