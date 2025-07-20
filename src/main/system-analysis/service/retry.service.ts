@@ -75,7 +75,7 @@ export const withRetry = async <T>(
   for (let attempt = 0; attempt < config.maxAttempts; attempt += 1) {
     try {
       // Retry logic requires sequential execution
-      // eslint-disable-next-line no-await-in-loop 
+      // eslint-disable-next-line no-await-in-loop
       return await fn();
     } catch (error) {
       lastError = error;
@@ -100,7 +100,7 @@ export const withRetry = async <T>(
 
       logOperationRetry(error, context);
       // Retry logic requires sequential execution
-      // eslint-disable-next-line no-await-in-loop 
+      // eslint-disable-next-line no-await-in-loop
       await sleep(delay);
     }
   }
