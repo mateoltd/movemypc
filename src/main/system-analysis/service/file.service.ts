@@ -7,6 +7,15 @@ export const readdir = promisify(fs.readdir);
 export const stat = promisify(fs.stat);
 export const access = promisify(fs.access);
 
+// Retryable file system error codes for transient errors
+const RETRYABLE_ERROR_CODES = [
+  'EBUSY',
+  'EAGAIN',
+  'EMFILE',
+  'ENFILE',
+  'ENOBUFS',
+];
+
 /**
  * Checks if a directory is accessible for reading
  * @param dirPath - Directory path to check
@@ -36,14 +45,7 @@ export const safeReaddir = async (dirPath: string): Promise<string[]> => {
         baseDelay: 500,
         retryCondition: (error: any) => {
           // Retry on transient file system errors
-          const retryableErrors = [
-            'EBUSY',
-            'EAGAIN',
-            'EMFILE',
-            'ENFILE',
-            'ENOBUFS',
-          ];
-          return retryableErrors.includes(error.code);
+          return RETRYABLE_ERROR_CODES.includes(error.code);
         },
       });
     },
@@ -65,14 +67,7 @@ export const safeStat = async (path: string): Promise<fs.Stats | null> => {
         baseDelay: 300,
         retryCondition: (error: any) => {
           // Retry on transient file system errors
-          const retryableErrors = [
-            'EBUSY',
-            'EAGAIN',
-            'EMFILE',
-            'ENFILE',
-            'ENOBUFS',
-          ];
-          return retryableErrors.includes(error.code);
+          return RETRYABLE_ERROR_CODES.includes(error.code);
         },
       });
     },
