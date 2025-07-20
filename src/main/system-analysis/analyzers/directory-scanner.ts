@@ -29,6 +29,8 @@ export const scanDirectory = async (
   parentId?: string,
   depth = 0,
 ): Promise<FileItem[]> => {
+  // Skip if beyond maxDepth or matches a built-in static pattern (e.g. node_modules, .git)
+  // Note: dynamic/user exclusions are checked later via isPathExcluded()
   if (depth > analysisLimits.maxDepth || shouldExcludePath(dirPath)) {
     return [];
   }
@@ -45,7 +47,7 @@ export const scanDirectory = async (
     if (entries.length === 0) {
       return [];
     }
-
+    // Also skip entries flagged by the runtime exclusionManager (user-defined rules)
     if (isPathExcluded(dirPath)) {
       return [];
     }
