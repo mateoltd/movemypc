@@ -65,6 +65,11 @@ export const withRetry = async <T>(
   options: Partial<RetryOptions> = {},
 ): Promise<T> => {
   const config = { ...DEFAULT_RETRY_OPTIONS, ...options };
+
+  if (config.maxAttempts <= 0) {
+    throw new Error('maxAttempts must be greater than 0');
+  }
+
   let lastError: any;
 
   for (let attempt = 0; attempt < config.maxAttempts; attempt += 1) {
