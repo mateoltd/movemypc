@@ -116,11 +116,6 @@ export default function App() {
       setAnalysis(analysisResult);
       setIsAnalyzing(false);
       setAnalysisProgress(null);
-
-      // Automatically open File Manager if we have a connected peer
-      if (connectedPeer) {
-        setShowFileSelection(true);
-      }
     });
 
     window.electronAPI.onAnalysisError((error: string) => {
@@ -130,7 +125,15 @@ export default function App() {
     });
 
     return () => {};
-  }, [connectedPeer]);
+  }, []); // Empty dependency array - run only once on mount
+
+  // Separate useEffect for handling connectedPeer-dependent logic
+  useEffect(() => {
+    // Automatically open File Manager if we have both analysis and a connected peer
+    if (connectedPeer && analysis) {
+      setShowFileSelection(true);
+    }
+  }, [connectedPeer, analysis]);
 
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
