@@ -32,7 +32,8 @@ export class CircuitBreaker {
 
   private successes = 0;
 
-  constructor(private options: CircuitBreakerOptions) {
+  // eslint-disable-next-line no-useless-constructor, no-empty-function
+  constructor(private readonly options: CircuitBreakerOptions) {
     // Constructor intentionally empty - options are stored in private field
   }
 

@@ -46,21 +46,16 @@ const ERROR_CATEGORIES = {
  * Gets error category from error code
  */
 const getErrorCategory = (errorCode: string): string => {
-  for (const [category, codes] of Object.entries(ERROR_CATEGORIES)) {
-    if (codes.includes(errorCode)) {
-      return category;
-    }
-  }
-  return 'UNKNOWN';
+  const categoryEntry = Object.entries(ERROR_CATEGORIES).find(([, codes]) =>
+    codes.includes(errorCode),
+  );
+  return categoryEntry ? categoryEntry[0] : 'UNKNOWN';
 };
 
 /**
- * Gets error severity based on error code and context
+ * Gets error severity based on error code
  */
-const getErrorSeverity = (
-  errorCode: string,
-  context: LogContext,
-): ErrorSeverity => {
+const getErrorSeverity = (errorCode: string): ErrorSeverity => {
   const category = getErrorCategory(errorCode);
 
   switch (category) {
@@ -80,10 +75,7 @@ const getErrorSeverity = (
 /**
  * Generates actionable suggestions based on error type
  */
-const getActionableSuggestions = (
-  errorCode: string,
-  context: LogContext,
-): string[] => {
+const getActionableSuggestions = (errorCode: string): string[] => {
   const category = getErrorCategory(errorCode);
   const suggestions: string[] = [];
 
@@ -146,7 +138,7 @@ const formatErrorMessage = (
   const errorCode = error.code || 'UNKNOWN';
   const errorMessage = error.message || 'Unknown error';
   const category = getErrorCategory(errorCode);
-  const severity = getErrorSeverity(errorCode, context);
+  const severity = getErrorSeverity(errorCode);
 
   let message = `[${severity}] ${context.operation} failed`;
 
@@ -194,9 +186,9 @@ const formatErrorMessage = (
  */
 export const logError = (error: any, context: LogContext): void => {
   const errorCode = error.code || 'UNKNOWN';
-  const suggestions = getActionableSuggestions(errorCode, context);
+  const suggestions = getActionableSuggestions(errorCode);
   const message = formatErrorMessage(error, context, suggestions);
-  const severity = getErrorSeverity(errorCode, context);
+  const severity = getErrorSeverity(errorCode);
 
   switch (severity) {
     case ErrorSeverity.CRITICAL:

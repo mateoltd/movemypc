@@ -189,21 +189,19 @@ export const scanPortableApps = async (
   const portableApps: FileItem[] = [];
 
   const scanPortableDir = async (dir: string): Promise<FileItem[]> => {
-    const apps: FileItem[] = [];
-
     const isAccessible = await isDirectoryAccessible(dir);
     if (!isAccessible) {
-      return apps;
+      return [];
     }
 
     const entries = await safeReaddir(dir);
 
-    for (const entry of entries) {
+    const processEntry = async (entry: string): Promise<FileItem | null> => {
       const fullPath = join(dir, entry);
       const stats = await safeStat(fullPath);
 
       if (stats && stats.isFile() && isExecutableFile(entry)) {
-        apps.push({
+        return {
           id: generateFileId(fullPath),
           name: entry,
           path: fullPath,
@@ -211,9 +209,23 @@ export const scanPortableApps = async (
           size: stats.size,
           modifiedDate: stats.mtime,
           extension: getFileExtension(entry),
-        });
+        };
       }
-    }
+      return null;
+    };
+
+    const results = await processConcurrentOperations(
+      entries,
+      processEntry,
+      Math.min(entries.length, analysisLimits.concurrencyLevel),
+    );
+
+    const apps: FileItem[] = [];
+    results.forEach((result) => {
+      if (result.status === 'fulfilled' && result.value) {
+        apps.push(result.value);
+      }
+    });
 
     return apps;
   };

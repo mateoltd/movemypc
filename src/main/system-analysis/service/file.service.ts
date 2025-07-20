@@ -38,9 +38,9 @@ export const isDirectoryAccessible = async (
  * @returns Promise resolving to array of entries or empty array if failed
  */
 export const safeReaddir = async (dirPath: string): Promise<string[]> => {
-  return await safeExecute(
+  return safeExecute(
     async () => {
-      return await withRetry(async () => await readdir(dirPath), {
+      return withRetry(async () => readdir(dirPath), {
         maxAttempts: 3,
         baseDelay: 500,
         retryCondition: (error: any) => {
@@ -60,9 +60,9 @@ export const safeReaddir = async (dirPath: string): Promise<string[]> => {
  * @returns Promise resolving to stats or null if failed
  */
 export const safeStat = async (path: string): Promise<fs.Stats | null> => {
-  return await safeExecute(
+  return safeExecute(
     async () => {
-      return await withRetry(async () => await stat(path), {
+      return withRetry(async () => stat(path), {
         maxAttempts: 3,
         baseDelay: 300,
         retryCondition: (error: any) => {

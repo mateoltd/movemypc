@@ -1,8 +1,6 @@
 import log from 'electron-log';
 import { AnalysisLimits } from '../../types/analysis-types';
-import {
-  processConcurrentWithPool,
-} from '../../utils/concurrency';
+import { processConcurrentWithPool } from '../../utils/concurrency';
 
 /**
  * Enhanced concurrent operations processor with robust error handling

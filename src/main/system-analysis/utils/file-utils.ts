@@ -5,6 +5,13 @@ let fileCounter = 0;
 let isCleanupRegistered = false;
 
 /**
+ * Resets the global file counter to 0
+ */
+export const resetFileCounter = (): void => {
+  fileCounter = 0;
+};
+
+/**
  * Registers cleanup handlers for process termination
  */
 const registerCleanupHandlers = (): void => {
@@ -50,14 +57,6 @@ export const getFileExtension = (filename: string): string => {
 };
 
 /**
- * Resets the file counter (useful for testing or restarting analysis)
- */
-export const resetFileCounter = (): void => {
-  fileCounter = 0;
-  log.debug('File counter reset to 0');
-};
-
-/**
  * Cleanup function to be called when analysis is complete or interrupted
  */
 export const cleanupFileUtils = (): void => {
@@ -95,7 +94,7 @@ export const formatFileSize = (sizeInBytes: number): string => {
 
   while (size >= 1024 && unitIndex < units.length - 1) {
     size /= 1024;
-    unitIndex++;
+    unitIndex += 1;
   }
 
   return `${size.toFixed(2)} ${units[unitIndex]}`;
