@@ -36,9 +36,10 @@ export class ErrorScenarioTester {
       resetFileCounter();
       const initialCount = getFileCounter();
       // Simulate file operations
-      await new AnalysisOrchestrator().initialize();
+      const orchestrator = new AnalysisOrchestrator();
+      await orchestrator.initialize();
       // Reset and check cleanup
-      new AnalysisOrchestrator().reset();
+      orchestrator.reset();
       const afterResetCount = getFileCounter();
       const success = initialCount === 0 && afterResetCount === 0;
       log.info(`File counter cleanup test: ${success ? 'PASSED' : 'FAILED'}`);
