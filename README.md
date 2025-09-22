@@ -1,3 +1,5 @@
+TODO: Node is crap. Migrate to Python + Rust + Electron for the frontend
+
 Warning: This project is still a work in progress. It is not usable nor stable at this stage.
 
 ## Install
