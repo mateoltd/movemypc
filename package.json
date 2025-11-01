@@ -16,10 +16,13 @@
   ],
   "main": "./.erb/dll/main.bundle.dev.js",
   "scripts": {
-    "build": "concurrently \"npm run build:main\" \"npm run build:renderer\"",
+    "build": "concurrently \"npm run build:main\" \"npm run build:renderer\" \"npm run build:go\"",
+    "build:go": "powershell ./build/build-go.ps1",
     "build:dll": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack --config ./.erb/configs/webpack.config.renderer.dev.dll.ts",
     "build:main": "cross-env NODE_ENV=production TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack --config ./.erb/configs/webpack.config.main.prod.ts",
     "build:renderer": "cross-env NODE_ENV=production TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack --config ./.erb/configs/webpack.config.renderer.prod.ts",
+    "dev": "npm run dev:go & npm start",
+    "dev:go": "powershell -Command \"Set-Location backend/go; go run ./cmd/movemypc\"",
     "postinstall": "ts-node .erb/scripts/check-native-dep.js && electron-builder install-app-deps && npm run build:dll",
     "lint": "cross-env NODE_ENV=development eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "cross-env NODE_ENV=development eslint . --ext .js,.jsx,.ts,.tsx --fix",
@@ -30,7 +33,9 @@
     "start:main": "concurrently -k -P \"cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true webpack --watch --config ./.erb/configs/webpack.config.main.dev.ts\" \"electronmon . -- {@}\" --",
     "start:preload": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack --config ./.erb/configs/webpack.config.preload.dev.ts",
     "start:renderer": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack serve --config ./.erb/configs/webpack.config.renderer.dev.ts",
-    "test": "jest"
+    "test": "jest",
+    "test:go": "cd backend/go && go test -v ./...",
+    "test:all": "npm run test:go && npm test"
   },
   "browserslist": [
     "extends browserslist-config-erb"
@@ -52,8 +57,7 @@
   "jest": {
     "moduleDirectories": [
       "node_modules",
-      "release/app/node_modules",
-      "src"
+      "frontend/electron/src"
     ],
     "moduleFileExtensions": [
       "js",
@@ -74,7 +78,7 @@
       "url": "http://localhost/"
     },
     "testPathIgnorePatterns": [
-      "release/app/dist",
+      "dist",
       ".erb/dll"
     ],
     "transform": {
@@ -88,6 +92,7 @@
     "electron-log": "^5.3.2",
     "electron-updater": "^6.3.9",
     "fs-extra": "^11.3.0",
+    "node-fetch": "^3.3.2",
     "p-limit": "^6.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -159,71 +164,7 @@
     "webpack-dev-server": "^5.2.0",
     "webpack-merge": "^6.0.1"
   },
-  "build": {
-    "productName": "MoveMyPC",
-    "appId": "org.mateo.movemypc",
-    "asar": true,
-    "afterSign": ".erb/scripts/notarize.js",
-    "asarUnpack": "**\\*.{node,dll}",
-    "files": [
-      "dist",
-      "node_modules",
-      "package.json"
-    ],
-    "mac": {
-      "notarize": false,
-      "target": {
-        "target": "default",
-        "arch": [
-          "arm64",
-          "x64"
-        ]
-      },
-      "type": "distribution",
-      "hardenedRuntime": true,
-      "entitlements": "assets/entitlements.mac.plist",
-      "entitlementsInherit": "assets/entitlements.mac.plist",
-      "gatekeeperAssess": false
-    },
-    "dmg": {
-      "contents": [
-        {
-          "x": 130,
-          "y": 220
-        },
-        {
-          "x": 410,
-          "y": 220,
-          "type": "link",
-          "path": "/Applications"
-        }
-      ]
-    },
-    "win": {
-      "target": [
-        "nsis"
-      ]
-    },
-    "linux": {
-      "target": [
-        "AppImage"
-      ],
-      "category": "Development"
-    },
-    "directories": {
-      "app": "release/app",
-      "buildResources": "assets",
-      "output": "release/build"
-    },
-    "extraResources": [
-      "./assets/**"
-    ],
-    "publish": {
-      "provider": "github",
-      "owner": "mateoltd",
-      "repo": "movemypc"
-    }
-  },
+  "build": "./build/electron-builder.config.js",
   "devEngines": {
     "runtime": {
       "name": "node",
@@ -239,7 +180,7 @@
   "electronmon": {
     "patterns": [
       "!**/**",
-      "src/main/**",
+      "frontend/electron/src/main/**",
       ".erb/dll/**"
     ],
     "logLevel": "quiet"

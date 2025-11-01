@@ -1,0 +1,213 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test-go:
+    name: Test Go Backend
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install dependencies
+      working-directory: backend/go
+      run: go mod download
+
+    - name: Run Go tests
+      working-directory: backend/go
+      run: go test -v -race -coverprofile=coverage.out ./...
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: backend/go/coverage.out
+        flags: go-backend
+
+  test-electron:
+    name: Test Electron Frontend
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run Electron tests
+      run: npm test
+
+  build-go-binaries:
+    name: Build Go Binaries
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+          - os: linux
+            arch: arm64
+          - os: windows
+            arch: amd64
+          - os: darwin
+            arch: amd64
+          - os: darwin
+            arch: arm64
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Build Go binary for ${{ matrix.os }}-${{ matrix.arch }}
+      working-directory: backend/go
+      env:
+        GOOS: ${{ matrix.os }}
+        GOARCH: ${{ matrix.arch }}
+      run: |
+        BINARY_NAME=movemypc
+        if [ "$GOOS" = "windows" ]; then
+          BINARY_NAME=movemypc.exe
+        fi
+        go build -ldflags="-s -w" -o "movemypc-$GOOS-$GOARCH/$BINARY_NAME" ./cmd/movemypc
+
+    - name: Upload Go binary artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: movemypc-${{ matrix.os }}-${{ matrix.arch }}
+        path: backend/go/movemypc-${{ matrix.os }}-${{ matrix.arch }}/
+
+  build-electron:
+    name: Build Electron App
+    runs-on: ${{ matrix.os }}
+    needs: [test-go, test-electron, build-go-binaries]
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+          - os: macos-latest
+            platform: darwin
+            arch: x64
+          - os: macos-latest
+            platform: darwin
+            arch: arm64
+          - os: windows-latest
+            platform: windows
+            arch: x64
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Download Go binary for ${{ matrix.platform }}-${{ matrix.arch }}
+      uses: actions/download-artifact@v3
+      with:
+        name: movemypc-${{ matrix.platform }}-${{ matrix.arch }}
+        path: build/binaries/${{ matrix.platform }}-${{ matrix.arch }}/
+
+    - name: Make Go binary executable (Linux/macOS)
+      if: matrix.os != 'windows-latest'
+      run: chmod +x build/binaries/${{ matrix.platform }}-${{ matrix.arch }}/movemypc
+
+    - name: Build Electron app for ${{ matrix.platform }}-${{ matrix.arch }}
+      run: |
+        npm run build:main
+        npm run build:renderer
+        npx electron-builder build --${{ matrix.platform }} --publish=never
+
+    - name: Upload Electron build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: MoveMyPC-${{ matrix.platform }}-${{ matrix.arch }}
+        path: release/build/
+
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: latest
+        working-directory: backend/go
+        args: --timeout=5m
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Run ESLint
+      run: npm run lint
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build-electron, lint]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download all build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts/
+
+    - name: Create GitHub release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: artifacts/**/*
+        draft: true
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
