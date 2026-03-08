@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   analyzeSystem: () => ipcRenderer.invoke('analyze-system'),
   connectToServer: (ipAddress: string) =>
     ipcRenderer.invoke('connect-to-server', ipAddress),
+  connectToPeer: (peer: { host: string; port: number }) =>
+    ipcRenderer.invoke('connect-to-peer', peer),
   onConnectionStatus: (callback: (status: string) => void) => {
     ipcRenderer.on('connection-status', (event, status) => callback(status));
   },
@@ -58,8 +60,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onAnalysisError: (callback: (error: string) => void) => {
     ipcRenderer.on('analysis-error', (event, error) => callback(error));
   },
-  transferFiles: (selectedItems: any) =>
-    ipcRenderer.invoke('transfer-files', selectedItems),
+  transferFiles: (payload: {
+    files: { id: string; name: string; path: string }[];
+  }) => ipcRenderer.invoke('transfer-files', payload),
+  onTransferProgress: (callback: (data: any) => void) => {
+    ipcRenderer.on('transfer-progress', (e, data) => callback(data));
+  },
+  onTransferComplete: (callback: (data: any) => void) => {
+    ipcRenderer.on('transfer-complete', (e, data) => callback(data));
+  },
+  onTransferError: (callback: (err: any) => void) => {
+    ipcRenderer.on('transfer-error', (e, err) => callback(err));
+  },
   flushDiscovery: () => ipcRenderer.invoke('flush-discovery'),
   addDirectoryExclusion: (path: string) =>
     ipcRenderer.invoke('add-directory-exclusion', path),

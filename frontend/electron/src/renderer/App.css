@@ -203,8 +203,52 @@ body {
 
 .results-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
   gap: 1rem;
+}
+
+.peer-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--card-background);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow);
+  min-width: 320px;
+}
+
+.peer-selector select {
+  min-width: 220px;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text-primary);
+}
+
+.transfer-progress {
+  margin: 1.5rem auto 0;
+  max-width: 720px;
+  padding: 1rem;
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.transfer-done {
+  margin: 1.5rem auto 0;
+  max-width: 720px;
+  padding: 1rem;
+  text-align: center;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+  border-radius: 12px;
 }
 
 /* Category Sections */
@@ -508,7 +552,6 @@ body {
     max-width: 320px;
   }
 }
-
 
 
 

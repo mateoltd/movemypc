@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-// Types matching the Go backend
 interface FileItem {
   id: string;
   name: string;
   path: string;
-  type: string; // "file" or "folder"
+  type: string;
   size?: number;
   children?: FileItem[];
   parent?: string;
@@ -29,6 +28,19 @@ interface AnalysisProgress {
   currentPath?: string;
 }
 
+interface Peer {
+  name: string;
+  host: string;
+  port: number;
+}
+
+interface TransferProgress {
+  current: number;
+  total: number;
+  fileName: string;
+  percent: number;
+}
+
 type ViewMode = 'welcome' | 'analyzing' | 'results';
 
 export default function App() {
@@ -38,9 +50,15 @@ export default function App() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [peers, setPeers] = useState<Peer[]>([]);
+  const [selectedPeer, setSelectedPeer] = useState<Peer | null>(null);
+  const [transferState, setTransferState] = useState<
+    'idle' | 'transferring' | 'done' | 'error'
+  >('idle');
+  const [transferProgress, setTransferProgress] =
+    useState<TransferProgress | null>(null);
 
   useEffect(() => {
-    // Set up Electron IPC listeners
     window.electronAPI.onAnalysisProgress((progressData: AnalysisProgress) => {
       setProgress(progressData);
     });
@@ -60,6 +78,70 @@ export default function App() {
       setError(errorMsg);
       setViewMode('welcome');
     });
+
+    window.electronAPI.onPeerFound((peer: Peer) => {
+      setPeers((prev) => {
+        const exists = prev.some(
+          (item) => item.host === peer.host && item.port === peer.port,
+        );
+        if (exists) return prev;
+        return [...prev, peer];
+      });
+      setSelectedPeer((prev) => prev || peer);
+    });
+
+    window.electronAPI.onPeerLost((peer: Peer) => {
+      setPeers((prev) =>
+        prev.filter(
+          (item) => !(item.host === peer.host && item.port === peer.port),
+        ),
+      );
+      setSelectedPeer((prev) => {
+        if (prev && prev.host === peer.host && prev.port === peer.port) {
+          return null;
+        }
+        return prev;
+      });
+    });
+
+    window.electronAPI.onTransferProgress((progressData: {
+      current: number;
+      total: number;
+      fileName: string;
+      bytesTransferred: number;
+      totalBytes: number;
+    }) => {
+      setTransferState('transferring');
+      setTransferProgress({
+        current: progressData.current,
+        total: progressData.total,
+        fileName: progressData.fileName,
+        percent:
+          progressData.totalBytes > 0
+            ? Math.min(
+                (progressData.bytesTransferred / progressData.totalBytes) * 100,
+                100,
+              )
+            : 0,
+      });
+    });
+
+    window.electronAPI.onTransferComplete(() => {
+      setTransferState('done');
+      setTransferProgress((prev) =>
+        prev
+          ? {
+              ...prev,
+              percent: 100,
+            }
+          : null,
+      );
+    });
+
+    window.electronAPI.onTransferError((transferError: string) => {
+      setTransferState('error');
+      setError(transferError);
+    });
   }, []);
 
   const handleStartAnalysis = async () => {
@@ -68,11 +150,13 @@ export default function App() {
     setError(null);
     setAnalysis(null);
     setSelectedItems(new Set());
+    setTransferState('idle');
+    setTransferProgress(null);
 
     try {
       await window.electronAPI.analyzeSystem();
-    } catch (error) {
-      console.error('Failed to start analysis:', error);
+    } catch (analysisError) {
+      console.error('Failed to start analysis:', analysisError);
       setIsAnalyzing(false);
       setViewMode('welcome');
       setError('Failed to start system analysis');
@@ -80,7 +164,7 @@ export default function App() {
   };
 
   const handleItemSelection = (itemId: string, selected: boolean) => {
-    setSelectedItems(prev => {
+    setSelectedItems((prev) => {
       const newSet = new Set(prev);
       if (selected) {
         newSet.add(itemId);
@@ -92,11 +176,11 @@ export default function App() {
   };
 
   const handleSelectAllInCategory = (items: FileItem[], selected: boolean) => {
-    setSelectedItems(prev => {
+    setSelectedItems((prev) => {
       const newSet = new Set(prev);
 
       const addItemsRecursively = (itemList: FileItem[]) => {
-        itemList.forEach(item => {
+        itemList.forEach((item) => {
           if (selected) {
             newSet.add(item.id);
           } else {
@@ -114,13 +198,12 @@ export default function App() {
   };
 
   const handleTransferSelected = () => {
-    if (selectedItems.size === 0 || !analysis) return;
+    if (selectedItems.size === 0 || !analysis || !selectedPeer) return;
 
-    // Collect selected items from all categories
-    const transferItems: Array<{id: string, name: string, path: string}> = [];
+    const transferItems: Array<{ id: string; name: string; path: string }> = [];
 
     const collectSelected = (items: FileItem[]) => {
-      items.forEach(item => {
+      items.forEach((item) => {
         if (selectedItems.has(item.id)) {
           transferItems.push({
             id: item.id,
@@ -139,8 +222,22 @@ export default function App() {
     collectSelected(analysis.configurations);
 
     if (transferItems.length > 0) {
-      window.electronAPI.transferFiles({ files: transferItems });
-      alert(`Initiating transfer of ${transferItems.length} items...`);
+      setTransferState('transferring');
+      setTransferProgress({
+        current: 0,
+        total: transferItems.length,
+        fileName: '',
+        percent: 0,
+      });
+      setError(null);
+
+      window.electronAPI
+        .connectToPeer(selectedPeer)
+        .then(() => window.electronAPI.transferFiles({ files: transferItems }))
+        .catch((transferError: Error) => {
+          setTransferState('error');
+          setError(transferError.message || 'Transfer failed');
+        });
     }
   };
 
@@ -171,7 +268,9 @@ export default function App() {
     <div className="analyzing-screen">
       <div className="analyzing-content">
         <h2>Analyzing Your System</h2>
-        <p>Please wait while we scan your files, applications, and configurations...</p>
+        <p>
+          Please wait while we scan your files, applications, and configurations...
+        </p>
 
         {progress && (
           <div className="progress-container">
@@ -180,7 +279,10 @@ export default function App() {
                 <div
                   className="progress-fill"
                   style={{
-                    width: progress.total > 0 ? `${Math.min((progress.current / progress.total) * 100, 100)}%` : '0%'
+                    width:
+                      progress.total > 0
+                        ? `${Math.min((progress.current / progress.total) * 100, 100)}%`
+                        : '0%',
                   }}
                 />
               </div>
@@ -189,13 +291,12 @@ export default function App() {
                   {progress.phase.charAt(0).toUpperCase() + progress.phase.slice(1)}
                 </span>
                 <span className="progress-count">
-                  {progress.current}{progress.total > 0 ? ` / ${progress.total}` : ''}
+                  {progress.current}
+                  {progress.total > 0 ? ` / ${progress.total}` : ''}
                 </span>
               </div>
               {progress.currentPath && (
-                <div className="current-path">
-                  📁 {progress.currentPath}
-                </div>
+                <div className="current-path">📁 {progress.currentPath}</div>
               )}
             </div>
           </div>
@@ -209,7 +310,8 @@ export default function App() {
   const renderResults = () => {
     if (!analysis) return null;
 
-    const totalItems = analysis.files.length + analysis.apps.length + analysis.configurations.length;
+    const totalItems =
+      analysis.files.length + analysis.apps.length + analysis.configurations.length;
     const selectedCount = selectedItems.size;
 
     return (
@@ -219,7 +321,8 @@ export default function App() {
           <p>Found {totalItems} items across your system</p>
           {selectedCount > 0 && (
             <p className="selection-summary">
-              {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected for transfer
+              {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected for
+              transfer
             </p>
           )}
         </div>
@@ -251,6 +354,37 @@ export default function App() {
         </div>
 
         <div className="results-actions">
+          <div className="peer-selector">
+            {peers.length > 0 ? (
+              <>
+                <label htmlFor="peer-select">Send to:</label>
+                <select
+                  id="peer-select"
+                  value={selectedPeer ? `${selectedPeer.host}:${selectedPeer.port}` : ''}
+                  onChange={(e) => {
+                    const peer = peers.find(
+                      (item) => `${item.host}:${item.port}` === e.target.value,
+                    );
+                    setSelectedPeer(peer || null);
+                  }}
+                >
+                  <option value="">Select a device</option>
+                  {peers.map((peer) => (
+                    <option
+                      key={`${peer.host}:${peer.port}`}
+                      value={`${peer.host}:${peer.port}`}
+                    >
+                      {peer.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <span>
+                No peers found - start MoveMyPC on your destination computer
+              </span>
+            )}
+          </div>
           <button
             className="secondary-button"
             onClick={() => setViewMode('welcome')}
@@ -260,11 +394,39 @@ export default function App() {
           <button
             className="primary-button"
             onClick={handleTransferSelected}
-            disabled={selectedCount === 0}
+            disabled={
+              selectedCount === 0 ||
+              !selectedPeer ||
+              transferState === 'transferring'
+            }
           >
-            Transfer Selected Items ({selectedCount})
+            {transferState === 'transferring'
+              ? 'Transferring...'
+              : `Transfer Selected Items (${selectedCount})`}
           </button>
         </div>
+
+        {transferProgress && transferState === 'transferring' && (
+          <div className="transfer-progress">
+            <div className="progress-details">
+              <span>Transferring {transferProgress.fileName || 'files'}</span>
+              <span>
+                {transferProgress.current} / {transferProgress.total} (
+                {Math.round(transferProgress.percent)}%)
+              </span>
+            </div>
+            <div className="progress-bar">
+              <div
+                className="progress-fill"
+                style={{ width: `${transferProgress.percent}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {transferState === 'done' && (
+          <div className="transfer-done">Transfer complete.</div>
+        )}
       </div>
     );
   };
@@ -291,7 +453,7 @@ function FileCategorySection({
   items,
   selectedItems,
   onItemSelection,
-  onSelectAll
+  onSelectAll,
 }: FileCategorySectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -299,9 +461,22 @@ function FileCategorySection({
     return null;
   }
 
-  const selectedInCategory = items.filter(item => selectedItems.has(item.id)).length;
-  const allSelected = selectedInCategory === items.length && items.length > 0;
-  const someSelected = selectedInCategory > 0 && selectedInCategory < items.length;
+  const countSelectedRecursively = (itemList: FileItem[]): number =>
+    itemList.reduce((count, item) => {
+      const nextCount = selectedItems.has(item.id) ? count + 1 : count;
+      return nextCount + (item.children ? countSelectedRecursively(item.children) : 0);
+    }, 0);
+
+  const countItemsRecursively = (itemList: FileItem[]): number =>
+    itemList.reduce(
+      (count, item) => count + 1 + (item.children ? countItemsRecursively(item.children) : 0),
+      0,
+    );
+
+  const selectedInCategory = countSelectedRecursively(items);
+  const totalInCategory = countItemsRecursively(items);
+  const allSelected = selectedInCategory === totalInCategory && totalInCategory > 0;
+  const someSelected = selectedInCategory > 0 && selectedInCategory < totalInCategory;
 
   return (
     <div className="category-section">
@@ -346,14 +521,20 @@ interface FileTreeProps {
   level?: number;
 }
 
-function FileTree({ items, selectedItems, onItemSelection, level = 0 }: FileTreeProps) {
+function FileTree({
+  items,
+  selectedItems,
+  onItemSelection,
+  level = 0,
+}: FileTreeProps) {
   return (
     <div className="file-tree">
-      {items.map(item => (
+      {items.map((item) => (
         <FileTreeItem
           key={item.id}
           item={item}
           isSelected={selectedItems.has(item.id)}
+          selectedItems={selectedItems}
           onSelection={onItemSelection}
           level={level}
         />
@@ -365,25 +546,37 @@ function FileTree({ items, selectedItems, onItemSelection, level = 0 }: FileTree
 interface FileTreeItemProps {
   item: FileItem;
   isSelected: boolean;
+  selectedItems: Set<string>;
   onSelection: (itemId: string, selected: boolean) => void;
   level: number;
 }
 
-function FileTreeItem({ item, isSelected, onSelection, level }: FileTreeItemProps) {
+function FileTreeItem({
+  item,
+  isSelected,
+  selectedItems,
+  onSelection,
+  level,
+}: FileTreeItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const hasChildren = item.children && item.children.length > 0;
 
-  const getItemIcon = (item: FileItem) => {
-    if (item.icon && item.icon.startsWith('data:image/')) {
-      return <img src={item.icon} alt="icon" style={{ width: '16px', height: '16px' }} />;
+  const getItemIcon = (currentItem: FileItem) => {
+    if (currentItem.icon && currentItem.icon.startsWith('data:image/')) {
+      return (
+        <img
+          src={currentItem.icon}
+          alt="icon"
+          style={{ width: '16px', height: '16px' }}
+        />
+      );
     }
 
-    if (item.icon) return item.icon;
+    if (currentItem.icon) return currentItem.icon;
 
-    if (item.type === 'folder') return isExpanded ? '📂' : '📁';
+    if (currentItem.type === 'folder') return isExpanded ? '📂' : '📁';
 
-    // File type icons based on extension
-    const ext = item.extension?.toLowerCase() || '';
+    const ext = currentItem.extension?.toLowerCase() || '';
     switch (ext) {
       case 'exe':
       case 'msi':
@@ -424,7 +617,7 @@ function FileTreeItem({ item, isSelected, onSelection, level }: FileTreeItemProp
 
     while (size >= 1024 && unitIndex < units.length - 1) {
       size /= 1024;
-      unitIndex++;
+      unitIndex += 1;
     }
 
     return `${size.toFixed(1)} ${units[unitIndex]}`;
@@ -454,9 +647,7 @@ function FileTreeItem({ item, isSelected, onSelection, level }: FileTreeItemProp
           </span>
         </div>
         <div className="file-item-right">
-          {item.size && (
-            <span className="item-size">{formatFileSize(item.size)}</span>
-          )}
+          {item.size && <span className="item-size">{formatFileSize(item.size)}</span>}
           <span className="item-type">{item.type}</span>
         </div>
       </div>
@@ -464,7 +655,7 @@ function FileTreeItem({ item, isSelected, onSelection, level }: FileTreeItemProp
       {hasChildren && isExpanded && (
         <FileTree
           items={item.children!}
-          selectedItems={new Set()} // Children inherit parent selection logic
+          selectedItems={selectedItems}
           onItemSelection={onSelection}
           level={level + 1}
         />

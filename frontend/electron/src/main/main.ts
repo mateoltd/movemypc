@@ -17,7 +17,7 @@ import { homedir, hostname, networkInterfaces } from 'os';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 import { startGoBackend, stopGoBackend, backendRequest } from './go-backend';
-import { startServer, connectToServer, sendData } from './network';
+import { startServer, connectToServer, sendFiles } from './network';
 import discoveryService from './discovery';
 
 class AppUpdater {
@@ -163,34 +163,41 @@ ipcMain.handle('connect-to-server', async (event, ipAddress: string) => {
   if (mainWindow) {
     connectToServer(ipAddress, mainWindow);
   }
+  return { success: true };
 });
 
-ipcMain.handle('transfer-files', async (event, selectedItems: any) => {
-  sendData({ type: 'file-transfer-request', payload: selectedItems });
-});
+ipcMain.handle(
+  'connect-to-peer',
+  async (event, peer: { host: string; port: number }) => {
+    if (mainWindow) {
+      connectToServer(peer.host, mainWindow);
+    }
+    return { success: true };
+  },
+);
+
+ipcMain.handle(
+  'transfer-files',
+  async (
+    event,
+    payload: { files: { id: string; name: string; path: string }[] },
+  ) => {
+    const fileList = payload.files.map((f) => ({ path: f.path, name: f.name }));
+    try {
+      await sendFiles(fileList);
+      mainWindow?.webContents.send('transfer-complete', { count: fileList.length });
+      return { success: true };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Transfer failed';
+      mainWindow?.webContents.send('transfer-error', message);
+      throw error;
+    }
+  },
+);
 
 ipcMain.handle('flush-discovery', () => {
   if (mainWindow) discoveryService.flush(mainWindow);
-});
-
-ipcMain.on('file-transfer-request', (event, payload) => {
-  const transferDir = join(homedir(), 'transferred-files');
-  fs.ensureDirSync(transferDir);
-
-  const { files } = payload;
-
-  files.forEach((file: { id: string; name: string; path: string }) => {
-    const destPath = join(transferDir, file.name);
-    fs.copy(file.path, destPath)
-      .then(() => console.log(`Copied ${file.path} to ${destPath}`))
-      .catch((err: Error) => {
-        console.error(`Error copying ${file.path}:`, err);
-        mainWindow?.webContents.send('file-copy-error', {
-          fileName: file.name,
-          error: err.message,
-        });
-      });
-  });
 });
 
 if (process.env.NODE_ENV === 'production') {
